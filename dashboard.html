@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PII Learn — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:        #0A1628;
+      --navy-mid:    #112240;
+      --navy-light:  #1A3358;
+      --navy-border: rgba(255,255,255,0.07);
+      --gold:        #C9A84C;
+      --gold-light:  #E2C97A;
+      --gold-dim:    rgba(201,168,76,0.15);
+      --white:       #FFFFFF;
+      --off-white:   #F5F5F0;
+      --grey:        #8A9BB0;
+      --grey-light:  #B4C0D0;
+      --success:     #2ECC71;
+      --error:       #D64045;
+      --warning:     #E8A838;
+      --sidebar-w:   260px;
+    }
+
+    html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--navy); color: var(--white); overflow: hidden; }
+
+    /* ══════════ LOADING SCREEN ══════════ */
+    #loading-screen {
+      position: fixed; inset: 0; background: var(--navy); z-index: 9999;
+      display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 1rem;
+    }
+    .load-spinner {
+      width: 36px; height: 36px;
+      border: 2px solid rgba(201,168,76,0.2);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    .load-label { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--grey); }
+
+    /* ══════════ APP SHELL ══════════ */
+    #app { display: none; height: 100vh; flex-direction: column; }
+    #app.ready { display: flex; }
+
+    /* ══════════ TOPBAR ══════════ */
+    .topbar {
+      height: 58px; background: var(--navy-mid);
+      border-bottom: 1px solid var(--navy-border);
+      display: flex; align-items: center; padding: 0 1.5rem;
+      flex-shrink: 0; gap: 1rem; position: relative; z-index: 100;
+    }
+
+    .topbar-logo {
+      display: flex; align-items: center; gap: 0.65rem;
+      text-decoration: none;
+    }
+    .logo-mark {
+      width: 32px; height: 32px;
+      border: 1.5px solid var(--gold);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Cormorant Garamond', serif; font-size: 13px; font-weight: 600;
+      color: var(--gold); flex-shrink: 0;
+    }
+    .logo-wordmark {
+      font-size: 0.82rem; font-weight: 600; letter-spacing: 0.06em;
+      color: var(--white);
+    }
+    .logo-wordmark span { color: var(--gold); }
+
+    .topbar-divider { width: 1px; height: 24px; background: var(--navy-border); }
+
+    .role-badge {
+      font-size: 0.65rem; letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 3px 10px; border-radius: 2px;
+      font-weight: 600;
+    }
+    .role-badge.admin      { background: rgba(201,168,76,0.18); color: var(--gold); }
+    .role-badge.instructor { background: rgba(46,204,113,0.15); color: var(--success); }
+    .role-badge.student    { background: rgba(138,155,176,0.15); color: var(--grey-light); }
+
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 1rem; }
+
+    .user-info { text-align: right; }
+    .user-name  { font-size: 0.82rem; font-weight: 500; color: var(--white); }
+    .user-email { font-size: 0.7rem; color: var(--grey); }
+
+    .avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--gold-dim); border: 1.5px solid var(--gold);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.78rem; font-weight: 600; color: var(--gold);
+      cursor: pointer; flex-shrink: 0;
+    }
+
+    .btn-sign-out {
+      font-size: 0.72rem; letter-spacing: 0.08em; color: var(--grey);
+      background: none; border: 1px solid var(--navy-border);
+      padding: 5px 12px; border-radius: 3px; cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .btn-sign-out:hover { color: var(--white); border-color: var(--grey); }
+
+    /* ══════════ LAYOUT ══════════ */
+    .layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* ══════════ SIDEBAR ══════════ */
+    .sidebar {
+      width: var(--sidebar-w); background: var(--navy-mid);
+      border-right: 1px solid var(--navy-border);
+      display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0;
+    }
+
+    .sidebar-section { padding: 1.5rem 0 0.5rem; }
+    .sidebar-section-label {
+      font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--grey); padding: 0 1.4rem; margin-bottom: 0.4rem;
+    }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.65rem 1.4rem; cursor: pointer;
+      font-size: 0.84rem; color: var(--grey-light);
+      transition: background 0.15s, color 0.15s;
+      border: none; background: none; width: 100%; text-align: left;
+      border-left: 3px solid transparent;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--white); }
+    .nav-item.active {
+      color: var(--white); background: rgba(201,168,76,0.08);
+      border-left-color: var(--gold);
+    }
+    .nav-item .icon { font-size: 1rem; width: 18px; text-align: center; flex-shrink: 0; }
+    .nav-item .badge {
+      margin-left: auto; background: var(--gold); color: var(--navy);
+      font-size: 0.62rem; font-weight: 700; padding: 1px 6px; border-radius: 10px;
+      min-width: 18px; text-align: center;
+    }
+
+    /* ══════════ MAIN CONTENT ══════════ */
+    .main { flex: 1; overflow-y: auto; padding: 2rem 2.5rem; }
+
+    .page-header { margin-bottom: 2rem; }
+    .page-title {
+      font-family: 'Cormorant Garamond', serif; font-size: 2rem;
+      font-weight: 300; color: var(--white); margin-bottom: 0.3rem;
+    }
+    .page-sub { font-size: 0.82rem; color: var(--grey); }
+
+    /* ── Stat cards ── */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card {
+      background: var(--navy-mid); border: 1px solid var(--navy-border);
+      border-radius: 4px; padding: 1.4rem 1.6rem;
+    }
+    .stat-label { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--grey); margin-bottom: 0.6rem; }
+    .stat-value { font-size: 2rem; font-weight: 600; color: var(--white); line-height: 1; }
+    .stat-value.gold { color: var(--gold); }
+    .stat-sub { font-size: 0.72rem; color: var(--grey); margin-top: 0.4rem; }
+
+    /* ── Tables ── */
+    .table-wrap {
+      background: var(--navy-mid); border: 1px solid var(--navy-border);
+      border-radius: 4px; overflow: hidden; margin-bottom: 1.5rem;
+    }
+    .table-header {
+      padding: 1.1rem 1.5rem; border-bottom: 1px solid var(--navy-border);
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    }
+    .table-title { font-size: 0.88rem; font-weight: 600; color: var(--white); }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--grey); font-weight: 500; text-align: left;
+      padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--navy-border);
+      background: rgba(255,255,255,0.02);
+    }
+    td {
+      padding: 0.85rem 1.5rem; font-size: 0.83rem; color: var(--grey-light);
+      border-bottom: 1px solid var(--navy-border);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.025); color: var(--white); }
+
+    /* ── Status pills ── */
+    .pill {
+      display: inline-block; font-size: 0.65rem; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 2px 9px; border-radius: 20px;
+    }
+    .pill.open    { background: rgba(46,204,113,0.15); color: var(--success); }
+    .pill.closed  { background: rgba(214,64,69,0.15);  color: var(--error); }
+    .pill.pending { background: rgba(232,168,56,0.15); color: var(--warning); }
+    .pill.graded  { background: rgba(201,168,76,0.15); color: var(--gold); }
+
+    /* ── Buttons ── */
+    .btn {
+      font-family: 'Inter', sans-serif; font-size: 0.76rem; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
+      padding: 0.55rem 1.2rem; border-radius: 3px; transition: all 0.18s;
+      border: none;
+    }
+    .btn-primary { background: var(--gold); color: var(--navy); }
+    .btn-primary:hover { background: var(--gold-light); }
+    .btn-outline {
+      background: transparent; color: var(--grey-light);
+      border: 1px solid var(--navy-border);
+    }
+    .btn-outline:hover { border-color: var(--gold); color: var(--white); }
+    .btn-danger { background: rgba(214,64,69,0.15); color: var(--error); border: 1px solid rgba(214,64,69,0.3); }
+    .btn-danger:hover { background: rgba(214,64,69,0.25); }
+    .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.68rem; }
+
+    /* ── Forms ── */
+    .form-grid { display: grid; gap: 1.2rem; }
+    .form-grid-2 { grid-template-columns: 1fr 1fr; }
+    .field-group label {
+      display: block; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--grey); margin-bottom: 0.45rem; font-weight: 500;
+    }
+    .field-group input,
+    .field-group select,
+    .field-group textarea {
+      width: 100%; background: var(--navy); border: 1px solid rgba(138,155,176,0.2);
+      border-radius: 3px; padding: 0.65rem 0.9rem;
+      font-family: 'Inter', sans-serif; font-size: 0.85rem; color: var(--white);
+      outline: none; transition: border-color 0.2s;
+      -webkit-appearance: none;
+    }
+    .field-group input:focus,
+    .field-group select:focus,
+    .field-group textarea:focus { border-color: var(--gold); }
+    .field-group textarea { resize: vertical; min-height: 90px; }
+    .field-group select option { background: var(--navy-mid); }
+
+    /* ── Modals ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(5,11,22,0.82); z-index: 500;
+      display: none; align-items: center; justify-content: center; padding: 1.5rem;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--navy-mid); border: 1px solid var(--navy-border);
+      border-radius: 6px; width: 100%; max-width: 560px;
+      max-height: 90vh; overflow-y: auto; padding: 2rem;
+    }
+    .modal-title {
+      font-family: 'Cormorant Garamond', serif; font-size: 1.5rem;
+      font-weight: 300; margin-bottom: 1.5rem; color: var(--white);
+    }
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.8rem; }
+
+    /* ── File upload zone ── */
+    .upload-zone {
+      border: 2px dashed rgba(138,155,176,0.25); border-radius: 4px;
+      padding: 2rem; text-align: center; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .upload-zone:hover, .upload-zone.drag { border-color: var(--gold); background: var(--gold-dim); }
+    .upload-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .upload-label { font-size: 0.82rem; color: var(--grey); }
+    .upload-label strong { color: var(--gold); }
+    .upload-sub { font-size: 0.72rem; color: var(--grey); margin-top: 0.25rem; }
+    #fileInput { display: none; }
+
+    /* ── Announcements / content cards ── */
+    .content-card {
+      background: var(--navy-mid); border: 1px solid var(--navy-border);
+      border-radius: 4px; padding: 1.4rem 1.6rem; margin-bottom: 0.75rem;
+    }
+    .content-card-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.3rem; }
+    .content-card-meta { font-size: 0.72rem; color: var(--grey); margin-bottom: 0.5rem; }
+    .content-card-desc { font-size: 0.82rem; color: var(--grey-light); line-height: 1.5; }
+
+    /* ── Grade input ── */
+    .grade-input {
+      width: 70px; background: var(--navy); border: 1px solid rgba(138,155,176,0.2);
+      border-radius: 3px; padding: 4px 8px; color: var(--white);
+      font-size: 0.82rem; text-align: center; outline: none;
+    }
+    .grade-input:focus { border-color: var(--gold); }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center; padding: 4rem 2rem;
+      color: var(--grey);
+    }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.5; }
+    .empty-text { font-size: 0.88rem; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 2rem; right: 2rem; z-index: 1000;
+      background: var(--navy-light); border: 1px solid var(--gold);
+      color: var(--white); padding: 0.8rem 1.4rem; border-radius: 4px;
+      font-size: 0.82rem; transform: translateY(20px); opacity: 0;
+      transition: all 0.3s; pointer-events: none;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Tabs ── */
+    .tab-bar { display: flex; gap: 0; border-bottom: 1px solid var(--navy-border); margin-bottom: 1.5rem; }
+    .tab {
+      padding: 0.7rem 1.2rem; font-size: 0.8rem; font-weight: 500;
+      color: var(--grey); cursor: pointer; border-bottom: 2px solid transparent;
+      transition: color 0.2s, border-color 0.2s; background: none; border-top: none;
+      border-left: none; border-right: none; margin-bottom: -1px;
+    }
+    .tab.active { color: var(--white); border-bottom-color: var(--gold); }
+    .tab:hover { color: var(--grey-light); }
+
+    /* ── Video/media embed ── */
+    .media-embed {
+      background: #000; border-radius: 4px; aspect-ratio: 16/9;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--grey); font-size: 0.82rem; margin-bottom: 1rem;
+      overflow: hidden;
+    }
+    .media-embed iframe, .media-embed video { width: 100%; height: 100%; border: none; }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { padding: 1.5rem; }
+      .form-grid-2 { grid-template-columns: 1fr; }
+      .stat-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading-screen">
+  <div class="load-spinner"></div>
+  <p class="load-label">Loading PII Learn</p>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- App -->
+<div id="app">
+  <!-- Topbar -->
+  <header class="topbar">
+    <a href="index.html" class="topbar-logo">
+      <div class="logo-mark">PII</div>
+      <span class="logo-wordmark">PII <span>Learn</span></span>
+    </a>
+    <div class="topbar-divider"></div>
+    <div class="role-badge" id="roleBadge"></div>
+
+    <div class="topbar-right">
+      <div class="user-info">
+        <div class="user-name" id="topUserName">—</div>
+        <div class="user-email" id="topUserEmail">—</div>
+      </div>
+      <div class="avatar" id="topAvatar">?</div>
+      <button class="btn-sign-out" onclick="signOut()">Sign Out</button>
+    </div>
+  </header>
+
+  <!-- Body -->
+  <div class="layout">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main" id="mainContent">
+      <div class="empty-state">
+        <div class="empty-icon">⏳</div>
+        <p class="empty-text">Loading your dashboard…</p>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     MODALS
+═══════════════════════════════════════════ -->
+
+<!-- Create Course Modal (Instructor / Admin) -->
+<div class="modal-overlay" id="modal-create-course">
+  <div class="modal">
+    <h2 class="modal-title">Create New Course</h2>
+    <div class="form-grid">
+      <div class="field-group">
+        <label>Course Title</label>
+        <input type="text" id="c-title" placeholder="e.g. Urban AI Policy — Summer 2026" />
+      </div>
+      <div class="field-group">
+        <label>Course Code</label>
+        <input type="text" id="c-code" placeholder="e.g. PII-401" />
+      </div>
+      <div class="field-group">
+        <label>Description</label>
+        <textarea id="c-desc" placeholder="Brief course overview…"></textarea>
+      </div>
+      <div class="form-grid form-grid-2">
+        <div class="field-group">
+          <label>Start Date</label>
+          <input type="date" id="c-start" />
+        </div>
+        <div class="field-group">
+          <label>End Date</label>
+          <input type="date" id="c-end" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-create-course')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCourse()">Create Course</button>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Content Modal -->
+<div class="modal-overlay" id="modal-upload-content">
+  <div class="modal">
+    <h2 class="modal-title">Upload Course Content</h2>
+    <div class="form-grid">
+      <div class="field-group">
+        <label>Course</label>
+        <select id="uc-course"><option value="">Select a course…</option></select>
+      </div>
+      <div class="field-group">
+        <label>Content Title</label>
+        <input type="text" id="uc-title" placeholder="e.g. Week 3 — Lecture Slides" />
+      </div>
+      <div class="field-group">
+        <label>Content Type</label>
+        <select id="uc-type">
+          <option value="video">Video</option>
+          <option value="audio">Audio</option>
+          <option value="document">Document / Slides</option>
+          <option value="link">External Link</option>
+        </select>
+      </div>
+      <div class="field-group" id="uc-link-wrap" style="display:none">
+        <label>URL / Embed Link</label>
+        <input type="url" id="uc-link" placeholder="https://…" />
+      </div>
+      <div class="field-group">
+        <label>File Upload</label>
+        <div class="upload-zone" onclick="document.getElementById('fileInput').click()" id="uploadZone">
+          <div class="upload-icon">📎</div>
+          <p class="upload-label"><strong>Click to browse</strong> or drag & drop</p>
+          <p class="upload-sub">PDF, PPTX, MP4, MP3, MOV — up to 500 MB</p>
+        </div>
+        <input type="file" id="fileInput" accept=".pdf,.pptx,.mp4,.mp3,.mov,.docx" />
+        <p id="file-selected" style="font-size:0.75rem;color:var(--gold);margin-top:0.4rem;"></p>
+      </div>
+      <div class="field-group">
+        <label>Notes (optional)</label>
+        <textarea id="uc-notes" placeholder="Any notes for students…"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-upload-content')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveContent()">Upload Content</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Assignment Modal -->
+<div class="modal-overlay" id="modal-create-assignment">
+  <div class="modal">
+    <h2 class="modal-title">Create Assignment</h2>
+    <div class="form-grid">
+      <div class="field-group">
+        <label>Course</label>
+        <select id="a-course"><option value="">Select a course…</option></select>
+      </div>
+      <div class="field-group">
+        <label>Assignment Title</label>
+        <input type="text" id="a-title" placeholder="e.g. Policy Memo — AI in Transit" />
+      </div>
+      <div class="field-group">
+        <label>Instructions</label>
+        <textarea id="a-desc" placeholder="Detailed instructions for students…" style="min-height:110px"></textarea>
+      </div>
+      <div class="form-grid form-grid-2">
+        <div class="field-group">
+          <label>Opens At (Date & Time)</label>
+          <input type="datetime-local" id="a-open" />
+        </div>
+        <div class="field-group">
+          <label>Closes At (Date & Time)</label>
+          <input type="datetime-local" id="a-close" />
+        </div>
+      </div>
+      <div class="form-grid form-grid-2">
+        <div class="field-group">
+          <label>Max Points</label>
+          <input type="number" id="a-points" value="100" min="1" />
+        </div>
+        <div class="field-group">
+          <label>Submission Type</label>
+          <select id="a-subtype">
+            <option value="file">File Upload</option>
+            <option value="text">Text Entry</option>
+            <option value="both">File + Text</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-create-assignment')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAssignment()">Publish Assignment</button>
+    </div>
+  </div>
+</div>
+
+<!-- Submit Assignment Modal (Student) -->
+<div class="modal-overlay" id="modal-submit-assignment">
+  <div class="modal">
+    <h2 class="modal-title" id="submit-assign-title">Submit Assignment</h2>
+    <input type="hidden" id="submit-assign-id" />
+    <div class="form-grid">
+      <div class="field-group" id="submit-text-wrap">
+        <label>Your Response</label>
+        <textarea id="submit-text" placeholder="Write your response here…" style="min-height:140px"></textarea>
+      </div>
+      <div class="field-group" id="submit-file-wrap">
+        <label>File Submission</label>
+        <div class="upload-zone" onclick="document.getElementById('submitFileInput').click()">
+          <div class="upload-icon">📄</div>
+          <p class="upload-label"><strong>Click to choose file</strong></p>
+          <p class="upload-sub">PDF, DOCX, PPTX, ZIP — up to 100 MB</p>
+        </div>
+        <input type="file" id="submitFileInput" accept=".pdf,.docx,.pptx,.zip,.txt" />
+        <p id="submit-file-selected" style="font-size:0.75rem;color:var(--gold);margin-top:0.4rem;"></p>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-submit-assignment')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAssignment()">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Enroll User Modal (Admin) -->
+<div class="modal-overlay" id="modal-enroll-user">
+  <div class="modal">
+    <h2 class="modal-title">Add User</h2>
+    <div class="form-grid">
+      <div class="field-group">
+        <label>Full Name</label>
+        <input type="text" id="eu-name" placeholder="First Last" />
+      </div>
+      <div class="field-group">
+        <label>Email Address</label>
+        <input type="email" id="eu-email" placeholder="user@example.org" />
+      </div>
+      <div class="field-group">
+        <label>Role</label>
+        <select id="eu-role">
+          <option value="student">Student</option>
+          <option value="instructor">Instructor</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label>Temporary Password</label>
+        <input type="text" id="eu-pass" placeholder="Min 8 characters" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-enroll-user')">Cancel</button>
+      <button class="btn btn-primary" onclick="addUser()">Create User</button>
+    </div>
+  </div>
+</div>
+
+<!-- Grade Submission Modal -->
+<div class="modal-overlay" id="modal-grade">
+  <div class="modal">
+    <h2 class="modal-title">Grade Submission</h2>
+    <input type="hidden" id="grade-sub-id" />
+    <div class="form-grid">
+      <div class="field-group">
+        <label>Student Submission</label>
+        <div id="grade-sub-preview" style="background:var(--navy);border-radius:4px;padding:1rem;font-size:0.82rem;color:var(--grey-light);min-height:80px;line-height:1.6;"></div>
+      </div>
+      <div class="field-group">
+        <label>Grade (out of <span id="grade-max-pts">100</span>)</label>
+        <input type="number" id="grade-score" min="0" style="max-width:120px;" />
+      </div>
+      <div class="field-group">
+        <label>Feedback to Student</label>
+        <textarea id="grade-feedback" placeholder="Your comments…" style="min-height:100px"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-grade')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGrade()">Save Grade</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SCRIPTS ══════════ -->
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SUPABASE_URL      = 'https://adtgtzblbneqedkysurk.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_BqM_1nYZxEy7uZosrGZHfQ_sB4Y-YKU';
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let CURRENT_USER   = null;
+let CURRENT_ROLE   = null;
+let CURRENT_SECTION = null;
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+(async () => {
+  const { data } = await sb.auth.getSession();
+  if (!data.session) { window.location.href = 'index.html'; return; }
+
+  const user = data.session.user;
+
+  // Fetch or create profile
+  let { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  if (!profile) {
+    // Fallback: derive role from URL param (first login)
+    const urlRole = new URLSearchParams(window.location.search).get('role') || 'student';
+    await sb.from('profiles').upsert({ id: user.id, email: user.email, role: urlRole, full_name: user.email.split('@')[0] });
+    profile = { id: user.id, email: user.email, role: urlRole, full_name: user.email.split('@')[0] };
+  }
+
+  CURRENT_USER = profile;
+  CURRENT_ROLE = profile.role;
+
+  // Populate topbar
+  const initials = (profile.full_name || profile.email).split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+  document.getElementById('topAvatar').textContent    = initials;
+  document.getElementById('topUserName').textContent  = profile.full_name || '—';
+  document.getElementById('topUserEmail').textContent = profile.email;
+  const badge = document.getElementById('roleBadge');
+  badge.textContent = profile.role.charAt(0).toUpperCase() + profile.role.slice(1);
+  badge.className = `role-badge ${profile.role}`;
+
+  buildSidebar();
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('app').classList.add('ready');
+  navigate('overview');
+})();
+
+// ── Sign out ──────────────────────────────────────────────────────────────────
+async function signOut() {
+  await sb.auth.signOut();
+  window.location.href = 'index.html';
+}
+
+// ── Sidebar builder ───────────────────────────────────────────────────────────
+function buildSidebar() {
+  const nav = {
+    admin: [
+      { section: 'Overview', items: [
+        { id: 'overview',   icon: '🏠', label: 'Dashboard' },
+        { id: 'analytics',  icon: '📊', label: 'Analytics' },
+      ]},
+      { section: 'Management', items: [
+        { id: 'courses',    icon: '📚', label: 'Courses' },
+        { id: 'users',      icon: '👥', label: 'Users & Roles' },
+        { id: 'grades',     icon: '🎓', label: 'All Grades' },
+      ]},
+      { section: 'Content', items: [
+        { id: 'assignments',icon: '📝', label: 'Assignments' },
+        { id: 'submissions',icon: '📨', label: 'Submissions' },
+        { id: 'content',    icon: '🎬', label: 'Course Content' },
+      ]},
+      { section: 'System', items: [
+        { id: 'settings',   icon: '⚙️', label: 'Settings' },
+      ]},
+    ],
+    instructor: [
+      { section: 'Overview', items: [
+        { id: 'overview',   icon: '🏠', label: 'Dashboard' },
+      ]},
+      { section: 'Teaching', items: [
+        { id: 'courses',    icon: '📚', label: 'My Courses' },
+        { id: 'content',    icon: '🎬', label: 'Upload Content' },
+        { id: 'assignments',icon: '📝', label: 'Assignments' },
+        { id: 'submissions',icon: '📨', label: 'Submissions & Grading' },
+      ]},
+      { section: 'Students', items: [
+        { id: 'grades',     icon: '🎓', label: 'Gradebook' },
+      ]},
+    ],
+    student: [
+      { section: 'Learning', items: [
+        { id: 'overview',   icon: '🏠', label: 'My Dashboard' },
+        { id: 'courses',    icon: '📚', label: 'My Courses' },
+        { id: 'content',    icon: '🎬', label: 'Course Materials' },
+      ]},
+      { section: 'Work', items: [
+        { id: 'assignments',icon: '📝', label: 'Assignments' },
+        { id: 'submissions',icon: '📨', label: 'My Submissions' },
+        { id: 'grades',     icon: '🎓', label: 'My Grades' },
+      ]},
+    ],
+  };
+
+  const roleNav = nav[CURRENT_ROLE] || nav.student;
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = roleNav.map(section => `
+    <div class="sidebar-section">
+      <p class="sidebar-section-label">${section.section}</p>
+      ${section.items.map(item => `
+        <button class="nav-item" id="nav-${item.id}" onclick="navigate('${item.id}')">
+          <span class="icon">${item.icon}</span>
+          <span>${item.label}</span>
+        </button>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function navigate(section) {
+  CURRENT_SECTION = section;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const activeNav = document.getElementById(`nav-${section}`);
+  if (activeNav) activeNav.classList.add('active');
+
+  const renderers = {
+    overview:    renderOverview,
+    courses:     renderCourses,
+    content:     renderContent,
+    assignments: renderAssignments,
+    submissions: renderSubmissions,
+    grades:      renderGrades,
+    users:       renderUsers,
+    analytics:   renderAnalytics,
+    settings:    renderSettings,
+  };
+
+  (renderers[section] || renderOverview)();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function setMain(html) { document.getElementById('mainContent').innerHTML = html; }
+
+function toast(msg, color = 'var(--gold)') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.borderColor = color;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function assignmentStatus(opens, closes) {
+  const now = Date.now();
+  const o = new Date(opens).getTime();
+  const c = new Date(closes).getTime();
+  if (now < o) return { label: 'Scheduled', cls: 'pending' };
+  if (now > c) return { label: 'Closed', cls: 'closed' };
+  return { label: 'Open', cls: 'open' };
+}
+
+async function loadCourseOptions(selectId) {
+  const col = CURRENT_ROLE === 'student' ? 'enrollments' : 'courses';
+  let courses = [];
+  if (CURRENT_ROLE === 'student') {
+    const { data } = await sb.from('enrollments').select('course_id, courses(id, title)').eq('student_id', CURRENT_USER.id);
+    courses = (data || []).map(e => e.courses).filter(Boolean);
+  } else if (CURRENT_ROLE === 'instructor') {
+    const { data } = await sb.from('courses').select('id, title').eq('instructor_id', CURRENT_USER.id);
+    courses = data || [];
+  } else {
+    const { data } = await sb.from('courses').select('id, title');
+    courses = data || [];
+  }
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Select a course…</option>' + courses.map(c=>`<option value="${c.id}">${c.title}</option>`).join('');
+}
+
+// ── Overview ──────────────────────────────────────────────────────────────────
+async function renderOverview() {
+  setMain(`<div class="page-header"><h1 class="page-title">Dashboard</h1><p class="page-sub">Welcome back, ${CURRENT_USER.full_name}.</p></div><div class="stat-grid" id="statGrid"><div class="stat-card"><p class="stat-label">Loading…</p><p class="stat-value gold">…</p></div></div><div id="overviewContent"></div>`);
+
+  const now = new Date().toISOString();
+
+  if (CURRENT_ROLE === 'admin') {
+    const [{ count: userCount }, { count: courseCount }, { count: subCount }] = await Promise.all([
+      sb.from('profiles').select('*', { count: 'exact', head: true }),
+      sb.from('courses').select('*', { count: 'exact', head: true }),
+      sb.from('submissions').select('*', { count: 'exact', head: true }),
+    ]);
+    document.getElementById('statGrid').innerHTML = `
+      ${statCard('Total Users', userCount ?? 0, '')}
+      ${statCard('Active Courses', courseCount ?? 0, '', 'gold')}
+      ${statCard('Submissions', subCount ?? 0, '')}
+    `;
+  } else if (CURRENT_ROLE === 'instructor') {
+    const [{ count: cCount }, { count: aCount }, { count: sCount }] = await Promise.all([
+      sb.from('courses').select('*', { count: 'exact', head: true }).eq('instructor_id', CURRENT_USER.id),
+      sb.from('assignments').select('*', { count: 'exact', head: true }).eq('instructor_id', CURRENT_USER.id),
+      sb.from('submissions').select('submissions.id', { count: 'exact', head: true }).is('grade', null),
+    ]);
+    document.getElementById('statGrid').innerHTML = `
+      ${statCard('My Courses', cCount ?? 0, '', 'gold')}
+      ${statCard('Assignments', aCount ?? 0, '')}
+      ${statCard('Ungraded', sCount ?? 0, 'Need attention')}
+    `;
+  } else {
+    const [{ count: aCount }, { count: sCount }] = await Promise.all([
+      sb.from('assignments').select('*', { count: 'exact', head: true }).lte('opens_at', now).gte('closes_at', now),
+      sb.from('submissions').select('*', { count: 'exact', head: true }).eq('student_id', CURRENT_USER.id),
+    ]);
+    document.getElementById('statGrid').innerHTML = `
+      ${statCard('Open Assignments', aCount ?? 0, 'Available now', 'gold')}
+      ${statCard('My Submissions', sCount ?? 0, 'Total submitted')}
+    `;
+  }
+}
+
+function statCard(label, val, sub, valClass='') {
+  return `<div class="stat-card"><p class="stat-label">${label}</p><p class="stat-value ${valClass}">${val}</p>${sub?`<p class="stat-sub">${sub}</p>`:''}</div>`;
+}
+
+// ── Courses ───────────────────────────────────────────────────────────────────
+async function renderCourses() {
+  let courses = [];
+  if (CURRENT_ROLE === 'student') {
+    const { data } = await sb.from('enrollments').select('course_id, courses(*)').eq('student_id', CURRENT_USER.id);
+    courses = (data || []).map(e => e.courses).filter(Boolean);
+  } else if (CURRENT_ROLE === 'instructor') {
+    const { data } = await sb.from('courses').select('*').eq('instructor_id', CURRENT_USER.id);
+    courses = data || [];
+  } else {
+    const { data } = await sb.from('courses').select('*, profiles(full_name)').order('created_at', { ascending: false });
+    courses = data || [];
+  }
+
+  const canCreate = CURRENT_ROLE !== 'student';
+  setMain(`
+    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
+      <div>
+        <h1 class="page-title">${CURRENT_ROLE === 'student' ? 'My Courses' : CURRENT_ROLE === 'instructor' ? 'My Courses' : 'All Courses'}</h1>
+        <p class="page-sub">${courses.length} course${courses.length !== 1 ? 's' : ''}</p>
+      </div>
+      ${canCreate ? `<button class="btn btn-primary" onclick="openModal('modal-create-course');loadCourseOptions('uc-course');loadCourseOptions('a-course')">+ New Course</button>` : ''}
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Course</th><th>Code</th>
+          ${CURRENT_ROLE === 'admin' ? '<th>Instructor</th>' : ''}
+          <th>Dates</th><th>Actions</th>
+        </tr></thead>
+        <tbody>
+          ${courses.length === 0 ? `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📚</div><p class="empty-text">No courses yet.</p></div></td></tr>` :
+            courses.map(c => `
+              <tr>
+                <td><strong style="color:var(--white)">${c.title}</strong><br><span style="font-size:0.72rem;color:var(--grey)">${c.description?.slice(0,60) || ''}…</span></td>
+                <td>${c.code || '—'}</td>
+                ${CURRENT_ROLE === 'admin' ? `<td>${c.profiles?.full_name || '—'}</td>` : ''}
+                <td style="font-size:0.75rem">${c.start_date ? new Date(c.start_date).toLocaleDateString() : '—'} → ${c.end_date ? new Date(c.end_date).toLocaleDateString() : '—'}</td>
+                <td><button class="btn btn-outline btn-sm" onclick="navigate('content')">View Content</button></td>
+              </tr>
+            `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `);
+}
+
+// ── Content ───────────────────────────────────────────────────────────────────
+async function renderContent() {
+  const canUpload = CURRENT_ROLE !== 'student';
+
+  let query = sb.from('course_content').select('*, courses(title)').order('created_at', { ascending: false });
+  if (CURRENT_ROLE === 'instructor') {
+    const { data: myCourses } = await sb.from('courses').select('id').eq('instructor_id', CURRENT_USER.id);
+    const ids = (myCourses || []).map(c => c.id);
+    if (ids.length) query = query.in('course_id', ids);
+  }
+
+  const { data: content } = await query;
+  const items = content || [];
+
+  setMain(`
+    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
+      <div><h1 class="page-title">Course Content</h1><p class="page-sub">${items.length} item${items.length !== 1 ? 's' : ''}</p></div>
+      ${canUpload ? `<button class="btn btn-primary" onclick="openModal('modal-upload-content');loadCourseOptions('uc-course')">+ Upload Content</button>` : ''}
+    </div>
+    ${items.length === 0 ? `<div class="empty-state"><div class="empty-icon">🎬</div><p class="empty-text">No content uploaded yet.</p></div>` :
+      items.map(item => `
+        <div class="content-card">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem">
+            <div>
+              <p class="content-card-title">${typeIcon(item.content_type)} ${item.title}</p>
+              <p class="content-card-meta">${item.courses?.title || '—'} · Uploaded ${fmtDate(item.created_at)}</p>
+              ${item.notes ? `<p class="content-card-desc">${item.notes}</p>` : ''}
+            </div>
+            <div style="display:flex;gap:0.5rem;flex-shrink:0">
+              ${item.file_url ? `<a href="${item.file_url}" target="_blank" class="btn btn-outline btn-sm">Open</a>` : ''}
+              ${item.external_url ? `<a href="${item.external_url}" target="_blank" class="btn btn-outline btn-sm">Open Link</a>` : ''}
+              ${canUpload ? `<button class="btn btn-danger btn-sm" onclick="deleteContent('${item.id}')">Delete</button>` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('')
+    }
+  `);
+
+  // File type select toggle
+  const typeSelect = document.getElementById('uc-type');
+  if (typeSelect) {
+    typeSelect.addEventListener('change', () => {
+      document.getElementById('uc-link-wrap').style.display = typeSelect.value === 'link' ? 'block' : 'none';
+    });
+  }
+  const fileInput = document.getElementById('fileInput');
+  if (fileInput) {
+    fileInput.addEventListener('change', () => {
+      const f = fileInput.files[0];
+      document.getElementById('file-selected').textContent = f ? `Selected: ${f.name}` : '';
+    });
+  }
+}
+
+function typeIcon(t) {
+  return { video: '🎬', audio: '🎧', document: '📄', link: '🔗' }[t] || '📎';
+}
+
+async function deleteContent(id) {
+  if (!confirm('Remove this content item?')) return;
+  await sb.from('course_content').delete().eq('id', id);
+  toast('Content removed.', 'var(--error)');
+  renderContent();
+}
+
+// ── Assignments ───────────────────────────────────────────────────────────────
+async function renderAssignments() {
+  const now = new Date().toISOString();
+  let query = sb.from('assignments').select('*, courses(title)').order('closes_at', { ascending: true });
+
+  if (CURRENT_ROLE === 'instructor') {
+    query = query.eq('instructor_id', CURRENT_USER.id);
+  } else if (CURRENT_ROLE === 'student') {
+    // show all assignments from enrolled courses
+    const { data: enr } = await sb.from('enrollments').select('course_id').eq('student_id', CURRENT_USER.id);
+    const ids = (enr || []).map(e => e.course_id);
+    if (ids.length) query = query.in('course_id', ids);
+  }
+
+  const { data } = await query;
+  const assignments = data || [];
+  const canCreate = CURRENT_ROLE !== 'student';
+
+  setMain(`
+    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
+      <div><h1 class="page-title">Assignments</h1><p class="page-sub">${assignments.length} assignment${assignments.length !== 1 ? 's' : ''}</p></div>
+      ${canCreate ? `<button class="btn btn-primary" onclick="openModal('modal-create-assignment');loadCourseOptions('a-course')">+ New Assignment</button>` : ''}
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Assignment</th><th>Course</th><th>Opens</th><th>Closes</th><th>Points</th><th>Status</th><th>Action</th>
+        </tr></thead>
+        <tbody>
+          ${assignments.length === 0 ? `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📝</div><p class="empty-text">No assignments yet.</p></div></td></tr>` :
+            assignments.map(a => {
+              const st = assignmentStatus(a.opens_at, a.closes_at);
+              return `
+                <tr>
+                  <td><strong style="color:var(--white)">${a.title}</strong></td>
+                  <td>${a.courses?.title || '—'}</td>
+                  <td style="font-size:0.75rem">${fmtDate(a.opens_at)}</td>
+                  <td style="font-size:0.75rem">${fmtDate(a.closes_at)}</td>
+                  <td>${a.max_points || 100}</td>
+                  <td><span class="pill ${st.cls}">${st.label}</span></td>
+                  <td>
+                    ${CURRENT_ROLE === 'student' && st.cls === 'open' ? `<button class="btn btn-primary btn-sm" onclick="openSubmitModal('${a.id}','${a.title.replace(/'/g,"\\'")}','${a.submission_type||'both'}')">Submit</button>` : ''}
+                    ${canCreate ? `<button class="btn btn-outline btn-sm" onclick="navigate('submissions')">View Subs</button>` : ''}
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `);
+}
+
+// ── Submissions ───────────────────────────────────────────────────────────────
+async function renderSubmissions() {
+  let query = sb.from('submissions')
+    .select('*, assignments(title, max_points, courses(title)), profiles(full_name, email)')
+    .order('submitted_at', { ascending: false });
+
+  if (CURRENT_ROLE === 'student') {
+    query = query.eq('student_id', CURRENT_USER.id);
+  } else if (CURRENT_ROLE === 'instructor') {
+    const { data: myCourses } = await sb.from('courses').select('id').eq('instructor_id', CURRENT_USER.id);
+    const { data: myAssignments } = await sb.from('assignments').select('id').in('course_id', (myCourses||[]).map(c=>c.id));
+    if (myAssignments?.length) query = query.in('assignment_id', myAssignments.map(a=>a.id));
+  }
+
+  const { data } = await query;
+  const subs = data || [];
+
+  setMain(`
+    <div class="page-header">
+      <h1 class="page-title">${CURRENT_ROLE === 'student' ? 'My Submissions' : 'Submissions & Grading'}</h1>
+      <p class="page-sub">${subs.length} submission${subs.length !== 1 ? 's' : ''}</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          ${CURRENT_ROLE !== 'student' ? '<th>Student</th>' : ''}
+          <th>Assignment</th><th>Course</th><th>Submitted</th><th>Grade</th><th>Action</th>
+        </tr></thead>
+        <tbody>
+          ${subs.length === 0 ? `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📨</div><p class="empty-text">No submissions yet.</p></div></td></tr>` :
+            subs.map(s => {
+              const gradeDisplay = s.grade != null ? `<span style="color:var(--gold);font-weight:600">${s.grade}/${s.assignments?.max_points||100}</span>` : `<span class="pill pending">Pending</span>`;
+              return `
+                <tr>
+                  ${CURRENT_ROLE !== 'student' ? `<td><strong style="color:var(--white)">${s.profiles?.full_name||'—'}</strong><br><span style="font-size:0.72rem;color:var(--grey)">${s.profiles?.email||''}</span></td>` : ''}
+                  <td>${s.assignments?.title||'—'}</td>
+                  <td>${s.assignments?.courses?.title||'—'}</td>
+                  <td style="font-size:0.75rem">${fmtDate(s.submitted_at)}</td>
+                  <td>${gradeDisplay}</td>
+                  <td>
+                    ${CURRENT_ROLE !== 'student' ? `<button class="btn btn-outline btn-sm" onclick="openGradeModal('${s.id}','${(s.text_response||'').replace(/'/g,"\\'")}',${s.assignments?.max_points||100})">Grade</button>` : ''}
+                    ${s.file_url ? `<a href="${s.file_url}" target="_blank" class="btn btn-outline btn-sm">Download</a>` : ''}
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `);
+}
+
+// ── Grades ────────────────────────────────────────────────────────────────────
+async function renderGrades() {
+  let query = sb.from('submissions').select('*, assignments(title, max_points, courses(title)), profiles(full_name)').not('grade', 'is', null).order('submitted_at', { ascending: false });
+
+  if (CURRENT_ROLE === 'student') query = query.eq('student_id', CURRENT_USER.id);
+
+  const { data } = await query;
+  const graded = data || [];
+
+  setMain(`
+    <div class="page-header">
+      <h1 class="page-title">${CURRENT_ROLE === 'student' ? 'My Grades' : 'Gradebook'}</h1>
+      <p class="page-sub">${graded.length} graded submission${graded.length !== 1 ? 's' : ''}</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          ${CURRENT_ROLE !== 'student' ? '<th>Student</th>' : ''}
+          <th>Assignment</th><th>Course</th><th>Score</th><th>Feedback</th>
+        </tr></thead>
+        <tbody>
+          ${graded.length === 0 ? `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">🎓</div><p class="empty-text">No graded submissions yet.</p></div></td></tr>` :
+            graded.map(g => `
+              <tr>
+                ${CURRENT_ROLE !== 'student' ? `<td><strong style="color:var(--white)">${g.profiles?.full_name||'—'}</strong></td>` : ''}
+                <td>${g.assignments?.title||'—'}</td>
+                <td>${g.assignments?.courses?.title||'—'}</td>
+                <td><span style="color:var(--gold);font-weight:600;font-size:1rem">${g.grade}</span><span style="color:var(--grey)">/${g.assignments?.max_points||100}</span></td>
+                <td style="font-size:0.8rem;color:var(--grey-light);max-width:280px">${g.feedback||'—'}</td>
+              </tr>
+            `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `);
+}
+
+// ── Users (Admin) ─────────────────────────────────────────────────────────────
+async function renderUsers() {
+  const { data } = await sb.from('profiles').select('*').order('created_at', { ascending: false });
+  const users = data || [];
+  setMain(`
+    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
+      <div><h1 class="page-title">Users & Roles</h1><p class="page-sub">${users.length} registered user${users.length !== 1 ? 's' : ''}</p></div>
+      <button class="btn btn-primary" onclick="openModal('modal-enroll-user')">+ Add User</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th><th>Actions</th></tr></thead>
+        <tbody>
+          ${users.length === 0 ? `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">👥</div><p class="empty-text">No users yet.</p></div></td></tr>` :
+            users.map(u => `
+              <tr>
+                <td><strong style="color:var(--white)">${u.full_name||'—'}</strong></td>
+                <td>${u.email}</td>
+                <td><span class="role-badge ${u.role}">${u.role}</span></td>
+                <td style="font-size:0.75rem">${u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</td>
+                <td>
+                  <select class="grade-input" onchange="changeUserRole('${u.id}',this.value)" style="width:120px;padding:4px 8px">
+                    ${['student','instructor','admin'].map(r=>`<option value="${r}" ${u.role===r?'selected':''}>${r}</option>`).join('')}
+                  </select>
+                </td>
+              </tr>
+            `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `);
+}
+
+async function changeUserRole(userId, newRole) {
+  await sb.from('profiles').update({ role: newRole }).eq('id', userId);
+  toast(`Role updated to ${newRole}.`);
+}
+
+// ── Analytics (Admin) ─────────────────────────────────────────────────────────
+async function renderAnalytics() {
+  const [{ count: uC }, { count: cC }, { count: sC }, { count: gC }] = await Promise.all([
+    sb.from('profiles').select('*', { count: 'exact', head: true }),
+    sb.from('courses').select('*', { count: 'exact', head: true }),
+    sb.from('submissions').select('*', { count: 'exact', head: true }),
+    sb.from('submissions').select('*', { count: 'exact', head: true }).not('grade', 'is', null),
+  ]);
+  setMain(`
+    <div class="page-header"><h1 class="page-title">Analytics</h1><p class="page-sub">Platform-wide overview</p></div>
+    <div class="stat-grid">
+      ${statCard('Total Users', uC ?? 0, '')}
+      ${statCard('Courses', cC ?? 0, '', 'gold')}
+      ${statCard('Submissions', sC ?? 0, '')}
+      ${statCard('Graded', gC ?? 0, `${sC ? Math.round((gC/sC)*100) : 0}% graded`)}
+    </div>
+    <div class="content-card">
+      <p class="content-card-title">📈 Detailed analytics</p>
+      <p class="content-card-desc">Connect your Supabase database to generate charts on engagement, grade distributions, and course completion rates. Set up Edge Functions or use the Supabase dashboard for deeper reporting.</p>
+    </div>
+  `);
+}
+
+// ── Settings (Admin) ──────────────────────────────────────────────────────────
+async function renderSettings() {
+  setMain(`
+    <div class="page-header"><h1 class="page-title">Settings</h1><p class="page-sub">Platform configuration</p></div>
+    <div class="content-card">
+      <p class="content-card-title">⚙️ Platform Settings</p>
+      <div class="form-grid" style="margin-top:1rem">
+        <div class="field-group">
+          <label>Platform Name</label>
+          <input type="text" value="PII Learn" id="platform-name" />
+        </div>
+        <div class="field-group">
+          <label>Support Email</label>
+          <input type="email" value="learn@thepii.org" id="support-email" />
+        </div>
+        <div style="display:flex;gap:0.75rem;justify-content:flex-end">
+          <button class="btn btn-primary" onclick="toast('Settings saved.')">Save Settings</button>
+        </div>
+      </div>
+    </div>
+    <div class="content-card" style="margin-top:1rem">
+      <p class="content-card-title">🔐 Supabase Configuration</p>
+      <p class="content-card-desc" style="margin-top:0.5rem">All authentication, user management, and data persistence is handled via Supabase. To manage credentials, users, and row-level security, visit your <a href="https://supabase.com/dashboard" target="_blank" style="color:var(--gold)">Supabase Dashboard</a>.</p>
+    </div>
+  `);
+}
+
+// ── Modal actions ─────────────────────────────────────────────────────────────
+async function saveCourse() {
+  const title = document.getElementById('c-title').value.trim();
+  const code  = document.getElementById('c-code').value.trim();
+  const desc  = document.getElementById('c-desc').value.trim();
+  const start = document.getElementById('c-start').value;
+  const end   = document.getElementById('c-end').value;
+  if (!title) { toast('Please enter a course title.', 'var(--error)'); return; }
+  const { error } = await sb.from('courses').insert({
+    title, code, description: desc, start_date: start||null, end_date: end||null,
+    instructor_id: CURRENT_USER.id
+  });
+  if (error) { toast('Error: ' + error.message, 'var(--error)'); return; }
+  closeModal('modal-create-course');
+  toast('Course created!');
+  renderCourses();
+}
+
+async function saveContent() {
+  const courseId = document.getElementById('uc-course').value;
+  const title    = document.getElementById('uc-title').value.trim();
+  const type     = document.getElementById('uc-type').value;
+  const link     = document.getElementById('uc-link').value.trim();
+  const notes    = document.getElementById('uc-notes').value.trim();
+  const file     = document.getElementById('fileInput').files[0];
+
+  if (!courseId || !title) { toast('Please fill in required fields.', 'var(--error)'); return; }
+
+  let fileUrl = null;
+  if (file) {
+    const path = `content/${courseId}/${Date.now()}-${file.name}`;
+    const { error: upErr } = await sb.storage.from('course-files').upload(path, file);
+    if (upErr) { toast('Upload error: ' + upErr.message, 'var(--error)'); return; }
+    const { data: urlData } = sb.storage.from('course-files').getPublicUrl(path);
+    fileUrl = urlData.publicUrl;
+  }
+
+  const { error } = await sb.from('course_content').insert({
+    course_id: courseId, title, content_type: type,
+    file_url: fileUrl, external_url: link||null, notes: notes||null,
+    uploaded_by: CURRENT_USER.id
+  });
+  if (error) { toast('Error: ' + error.message, 'var(--error)'); return; }
+  closeModal('modal-upload-content');
+  toast('Content uploaded!');
+  renderContent();
+}
+
+async function saveAssignment() {
+  const courseId  = document.getElementById('a-course').value;
+  const title     = document.getElementById('a-title').value.trim();
+  const desc      = document.getElementById('a-desc').value.trim();
+  const opens     = document.getElementById('a-open').value;
+  const closes    = document.getElementById('a-close').value;
+  const points    = parseInt(document.getElementById('a-points').value) || 100;
+  const subtype   = document.getElementById('a-subtype').value;
+
+  if (!courseId || !title || !opens || !closes) { toast('Please fill all required fields.', 'var(--error)'); return; }
+  if (new Date(closes) <= new Date(opens)) { toast('Close date must be after open date.', 'var(--error)'); return; }
+
+  const { error } = await sb.from('assignments').insert({
+    course_id: courseId, title, description: desc,
+    opens_at: opens, closes_at: closes, max_points: points,
+    submission_type: subtype, instructor_id: CURRENT_USER.id
+  });
+  if (error) { toast('Error: ' + error.message, 'var(--error)'); return; }
+  closeModal('modal-create-assignment');
+  toast('Assignment published!');
+  renderAssignments();
+}
+
+function openSubmitModal(id, title, subtype) {
+  document.getElementById('submit-assign-id').value = id;
+  document.getElementById('submit-assign-title').textContent = 'Submit: ' + title;
+  document.getElementById('submit-text-wrap').style.display = (subtype === 'file') ? 'none' : 'block';
+  document.getElementById('submit-file-wrap').style.display = (subtype === 'text') ? 'none' : 'block';
+
+  const fi = document.getElementById('submitFileInput');
+  fi.addEventListener('change', () => {
+    document.getElementById('submit-file-selected').textContent = fi.files[0] ? `Selected: ${fi.files[0].name}` : '';
+  });
+  openModal('modal-submit-assignment');
+}
+
+async function submitAssignment() {
+  const assignId = document.getElementById('submit-assign-id').value;
+  const text     = document.getElementById('submit-text').value.trim();
+  const file     = document.getElementById('submitFileInput').files[0];
+
+  // Check if already submitted
+  const { data: existing } = await sb.from('submissions').select('id').eq('assignment_id', assignId).eq('student_id', CURRENT_USER.id).single();
+  if (existing) { toast('You already submitted this assignment.', 'var(--error)'); return; }
+
+  let fileUrl = null;
+  if (file) {
+    const path = `submissions/${assignId}/${CURRENT_USER.id}-${Date.now()}-${file.name}`;
+    const { error: upErr } = await sb.storage.from('course-files').upload(path, file);
+    if (!upErr) {
+      const { data: urlData } = sb.storage.from('course-files').getPublicUrl(path);
+      fileUrl = urlData.publicUrl;
+    }
+  }
+
+  const { error } = await sb.from('submissions').insert({
+    assignment_id: assignId, student_id: CURRENT_USER.id,
+    text_response: text||null, file_url: fileUrl,
+    submitted_at: new Date().toISOString()
+  });
+  if (error) { toast('Error: ' + error.message, 'var(--error)'); return; }
+  closeModal('modal-submit-assignment');
+  toast('Submitted successfully! 🎉');
+  renderSubmissions();
+}
+
+function openGradeModal(subId, preview, maxPts) {
+  document.getElementById('grade-sub-id').value = subId;
+  document.getElementById('grade-sub-preview').textContent = preview || '(File submission — see download link in submissions table)';
+  document.getElementById('grade-max-pts').textContent = maxPts;
+  document.getElementById('grade-score').max = maxPts;
+  document.getElementById('grade-score').value = '';
+  document.getElementById('grade-feedback').value = '';
+  openModal('modal-grade');
+}
+
+async function saveGrade() {
+  const subId    = document.getElementById('grade-sub-id').value;
+  const score    = parseFloat(document.getElementById('grade-score').value);
+  const feedback = document.getElementById('grade-feedback').value.trim();
+  if (isNaN(score)) { toast('Please enter a numeric grade.', 'var(--error)'); return; }
+  const { error } = await sb.from('submissions').update({ grade: score, feedback, graded_at: new Date().toISOString(), graded_by: CURRENT_USER.id }).eq('id', subId);
+  if (error) { toast('Error: ' + error.message, 'var(--error)'); return; }
+  closeModal('modal-grade');
+  toast('Grade saved!');
+  renderSubmissions();
+}
+
+async function addUser() {
+  const name  = document.getElementById('eu-name').value.trim();
+  const email = document.getElementById('eu-email').value.trim();
+  const role  = document.getElementById('eu-role').value;
+  const pass  = document.getElementById('eu-pass').value;
+  if (!name || !email || !pass) { toast('Please fill all fields.', 'var(--error)'); return; }
+
+  // Create user via Supabase Auth Admin — requires service role key (set up via Supabase Edge Function for security)
+  // For now, upsert into profiles and show instructions
+  toast('User invite flow requires a Supabase Edge Function with service_role key. Profile placeholder created.', 'var(--warning)');
+  closeModal('modal-enroll-user');
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// Expose functions to global scope (required because this is a module script)
+window.signOut           = signOut;
+window.navigate          = navigate;
+window.openModal         = openModal;
+window.closeModal        = closeModal;
+window.saveCourse        = saveCourse;
+window.saveContent       = saveContent;
+window.saveAssignment    = saveAssignment;
+window.openSubmitModal   = openSubmitModal;
+window.submitAssignment  = submitAssignment;
+window.openGradeModal    = openGradeModal;
+window.saveGrade         = saveGrade;
+window.addUser           = addUser;
+window.deleteContent     = deleteContent;
+window.changeUserRole    = changeUserRole;
+
+// Drag-and-drop for upload zone
+const zone = document.getElementById('uploadZone');
+if (zone) {
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag');
+    const f = e.dataTransfer.files[0];
+    if (f) { document.getElementById('fileInput').files = e.dataTransfer.files; document.getElementById('file-selected').textContent = 'Selected: ' + f.name; }
+  });
+}
+</script>
+
+</body>
+</html>
