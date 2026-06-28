@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PII Learn — Dashboard</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400&display=swap"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --accent:#c8401e;--ink:#0e0e0c;--paper:#faf9f5;--warm:#f3f0e8;--rule:rgba(14,14,12,0.12);
+  --serif:'Playfair Display',Georgia,serif;--sans:'DM Sans',system-ui,sans-serif;--mono:'DM Mono',monospace;
+  --ok:#1a6b3a;--ok-bg:#edf7f1;--err:#9b2020;--err-bg:#fdf0f0;--warn:#7a5c12;--warn-bg:#fdf8ec;
+  --sidebar:248px;
+}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);min-height:100vh;overflow:hidden}
+#loading{position:fixed;inset:0;background:var(--ink);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.load-ring{width:38px;height:38px;border:2px solid rgba(200,64,30,.2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+.load-txt{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.35)}
+#app{display:none;height:100vh;flex-direction:column}
+#app.ready{display:flex}
+/* TOPBAR */
+.topbar{height:64px;background:var(--ink);display:flex;align-items:center;padding:0 28px;gap:14px;flex-shrink:0;z-index:200}
+.topbar-brand{display:flex;align-items:center;gap:12px;text-decoration:none}
+.t-ring{width:36px;height:36px;border:1.5px solid var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.t-ring span{font-family:var(--serif);font-size:11px;font-weight:700;color:var(--accent)}
+.t-wm{font-family:var(--serif);font-size:15px;font-weight:700;color:#fff}
+.t-sub{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-top:1px}
+.t-div{width:1px;height:22px;background:rgba(255,255,255,.1)}
+.rb{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;padding:3px 10px;border-radius:20px}
+.rb.admin{background:rgba(200,64,30,.25);color:#e8795a}
+.rb.instructor{background:rgba(26,107,58,.2);color:#2ecc71}
+.rb.student{background:rgba(255,255,255,.1);color:rgba(255,255,255,.55)}
+.t-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+.t-name{font-size:13px;color:#fff;font-weight:500}
+.t-email{font-size:11px;color:rgba(255,255,255,.35)}
+/* Program context badge in topbar */
+.prog-ctx{font-size:11px;color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.12);padding:4px 10px;border-radius:2px;cursor:pointer;transition:all .2s;background:none;font-family:var(--sans)}
+.prog-ctx:hover{color:#fff;border-color:rgba(255,255,255,.3)}
+.btn-ghost{background:none;border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.6);padding:6px 14px;border-radius:2px;font-size:12px;cursor:pointer;font-family:var(--sans);transition:all .2s}
+.btn-ghost:hover{background:rgba(255,255,255,.08);color:#fff}
+/* LAYOUT */
+.layout{display:flex;flex:1;overflow:hidden}
+/* SIDEBAR */
+.sidebar{width:var(--sidebar);background:#fff;border-right:1px solid var(--rule);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+.sb-sect{padding:18px 0 4px}
+.sb-lbl{font-size:9px;letter-spacing:.18em;text-transform:uppercase;font-weight:700;color:rgba(14,14,12,.3);padding:0 18px;margin-bottom:4px}
+.nav-btn{display:flex;align-items:center;gap:10px;padding:9px 18px;width:100%;background:none;border:none;border-left:3px solid transparent;font-family:var(--sans);font-size:13px;color:rgba(14,14,12,.5);cursor:pointer;transition:all .15s;text-align:left}
+.nav-btn:hover{background:var(--warm);color:var(--ink)}
+.nav-btn.active{color:var(--accent);border-left-color:var(--accent);background:rgba(200,64,30,.05);font-weight:600}
+.ni{width:16px;text-align:center;font-size:13px;flex-shrink:0}
+/* MAIN */
+.main{flex:1;overflow-y:auto;background:var(--paper)}
+.mi{padding:36px 44px;max-width:1280px}
+/* PAGE HEADER */
+.ph{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:28px;padding-bottom:18px;border-bottom:1px solid var(--rule)}
+.ph h1{font-family:var(--serif);font-size:26px;font-weight:700}
+.ph p{font-size:12px;color:rgba(14,14,12,.4);margin-top:4px}
+.ph-act{display:flex;gap:10px;align-items:center;flex-shrink:0;flex-wrap:wrap}
+/* BUTTONS */
+.btn{font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;padding:9px 18px;border-radius:2px;border:none;transition:all .18s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{opacity:.88}
+.btn-outline{background:none;border:1.5px solid var(--rule);color:var(--ink)}.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+.btn-danger{background:var(--err-bg);color:var(--err);border:1px solid rgba(155,32,32,.2)}.btn-danger:hover{background:#fce0e0}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.ssm{width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+/* STATS */
+.sg{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:14px;margin-bottom:26px}
+.sc{background:#fff;border:1px solid var(--rule);padding:22px;border-radius:2px}
+.sl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:rgba(14,14,12,.38);margin-bottom:8px}
+.sv{font-family:var(--serif);font-size:30px;font-weight:700;line-height:1}
+.sv.ac{color:var(--accent)}
+.ss{font-size:12px;color:rgba(14,14,12,.38);margin-top:6px}
+/* TABLES */
+.tw{background:#fff;border:1px solid var(--rule);border-radius:2px;overflow:hidden;margin-bottom:18px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:10px 16px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:rgba(14,14,12,.38);border-bottom:2px solid var(--rule);white-space:nowrap;background:var(--warm)}
+td{padding:11px 16px;border-bottom:1px solid var(--rule);color:rgba(14,14,12,.72);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr.dr:hover td{background:rgba(243,240,232,.5)}
+td strong{color:var(--ink);font-weight:600}
+/* PILLS */
+.pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 9px;border-radius:20px}
+.pill.open{background:var(--ok-bg);color:var(--ok)}
+.pill.closed{background:var(--err-bg);color:var(--err)}
+.pill.pending{background:var(--warn-bg);color:var(--warn)}
+.pill.graded{background:rgba(200,64,30,.1);color:var(--accent)}
+.pill.submitted{background:var(--ok-bg);color:var(--ok)}
+.pill.admin{background:rgba(200,64,30,.1);color:var(--accent)}
+.pill.instructor{background:var(--ok-bg);color:var(--ok)}
+.pill.student{background:var(--warm);color:rgba(14,14,12,.45);border:1px solid var(--rule)}
+/* CONTENT CARDS */
+.cc{background:#fff;border:1px solid var(--rule);border-radius:2px;padding:18px 22px;margin-bottom:10px}
+.cc-title{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:4px}
+.cc-meta{font-size:11px;color:rgba(14,14,12,.38);margin-bottom:5px}
+.cc-desc{font-size:13px;color:rgba(14,14,12,.6);line-height:1.6}
+/* MODALS */
+.mo{position:fixed;inset:0;background:rgba(14,14,12,.55);z-index:500;display:none;align-items:center;justify-content:center;padding:20px}
+.mo.open{display:flex}
+.modal{background:var(--paper);border-radius:2px;width:100%;max-width:580px;max-height:92vh;overflow-y:auto;padding:36px 40px}
+.modal-title{font-family:var(--serif);font-size:22px;font-weight:700;margin-bottom:22px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;padding-top:18px;border-top:1px solid var(--rule)}
+/* FORMS */
+.fg{display:grid;gap:15px}
+.fg2{grid-template-columns:1fr 1fr}
+.fl label{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:rgba(14,14,12,.45);margin-bottom:5px}
+.fl input,.fl select,.fl textarea{width:100%;padding:10px 12px;border:1.5px solid var(--rule);border-radius:2px;font-family:var(--sans);font-size:13px;color:var(--ink);background:var(--warm);outline:none;transition:border-color .2s;-webkit-appearance:none}
+.fl input:focus,.fl select:focus,.fl textarea:focus{border-color:var(--accent)}
+.fl textarea{resize:vertical;min-height:90px}
+.fl select option{background:var(--paper)}
+/* UPLOAD */
+.uz{border:2px dashed var(--rule);border-radius:2px;padding:22px;text-align:center;cursor:pointer;transition:all .2s;background:var(--warm)}
+.uz:hover,.uz.drag{border-color:var(--accent);background:rgba(200,64,30,.04)}
+.uz-icon{font-size:20px;margin-bottom:6px}
+.uz-lbl{font-size:13px;color:rgba(14,14,12,.5)}.uz-lbl strong{color:var(--accent)}
+.uz-sub{font-size:11px;color:rgba(14,14,12,.38);margin-top:3px}
+.fc{font-size:11px;color:var(--accent);margin-top:5px;font-family:var(--mono)}
+/* TOAST */
+#toast{position:fixed;bottom:22px;right:22px;z-index:1000;background:var(--ink);color:#fff;padding:11px 18px;border-radius:2px;font-size:13px;border-left:3px solid var(--accent);transform:translateY(16px);opacity:0;transition:all .3s;pointer-events:none;max-width:320px}
+#toast.show{transform:translateY(0);opacity:1}
+/* EMPTY */
+.empty{text-align:center;padding:48px 24px;color:rgba(14,14,12,.3)}
+.ei{font-size:26px;margin-bottom:10px}
+.et{font-size:13px}
+/* MISC */
+.gi{padding:5px 8px;border:1.5px solid var(--rule);border-radius:2px;font-size:13px;text-align:center;font-family:var(--mono);background:var(--warm);color:var(--ink);outline:none}
+.gi:focus{border-color:var(--accent)}
+.info-box{background:rgba(200,64,30,.05);border:1px solid rgba(200,64,30,.2);border-radius:2px;padding:12px 16px;font-size:12px;color:rgba(14,14,12,.65);margin-bottom:16px;line-height:1.6}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:768px){.sidebar{display:none}.mi{padding:20px}}
+</style>
+</head>
+<body>
+<div id="loading"><div class="load-ring"></div><p class="load-txt">Loading PII Learn</p></div>
+<div id="toast"></div>
+
+<div id="app">
+  <header class="topbar">
+    <a href="index.html" class="topbar-brand">
+      <div class="t-ring"><span>PII</span></div>
+      <div><div class="t-wm">PII Learn</div><div class="t-sub">The Public Innovation Institute</div></div>
+    </a>
+    <div class="t-div"></div>
+    <div class="rb" id="roleBadge"></div>
+    <button class="prog-ctx" id="progCtxBtn" onclick="navigate('programs')" style="display:none"></button>
+    <div class="t-right">
+      <div style="text-align:right"><div class="t-name" id="tName">—</div><div class="t-email" id="tEmail">—</div></div>
+      <button class="btn-ghost" onclick="signOut()">Sign Out</button>
+    </div>
+  </header>
+  <div class="layout">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main"><div class="mi" id="mc"></div></main>
+  </div>
+</div>
+
+<!-- ═══ MODALS ═══ -->
+
+<!-- Add User -->
+<div class="mo" id="m-adduser">
+  <div class="modal">
+    <h2 class="modal-title">Add New User</h2>
+    <div class="fg">
+      <div class="fl"><label>Full Name</label><input type="text" id="au-name" placeholder="First Last"/></div>
+      <div class="fl"><label>Email Address</label><input type="email" id="au-email" placeholder="user@example.org"/></div>
+      <div class="fg fg2">
+        <div class="fl"><label>Role</label><select id="au-role"><option value="student">Student</option><option value="instructor">Instructor</option><option value="admin">Admin</option></select></div>
+        <div class="fl"><label>Password</label><input type="text" id="au-pass" placeholder="Min 8 characters"/></div>
+      </div>
+      <div class="fl"><label>Assign to Program(s) — optional</label><select id="au-prog" multiple style="min-height:90px;background:var(--warm)"><option value="">Loading…</option></select><p style="font-size:11px;color:rgba(14,14,12,.4);margin-top:4px">Hold Ctrl / Cmd to select multiple</p></div>
+    </div>
+    <p id="au-err" style="color:var(--err);font-size:12px;margin-top:10px;display:none"></p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('m-adduser')">Cancel</button>
+      <button class="btn btn-primary" id="au-btn" onclick="addUser()">Create User</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage Programs -->
+<div class="mo" id="m-program">
+  <div class="modal">
+    <h2 class="modal-title">Create Program</h2>
+    <div class="fg">
+      <div class="fl"><label>Program Name</label><input type="text" id="p-name" placeholder="e.g. PII × Cyvl Summer Innovation Program 2026"/></div>
+      <div class="fl"><label>Description</label><textarea id="p-desc" placeholder="Brief program overview…"></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('m-program')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProgram()">Create Program</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Course -->
+<div class="mo" id="m-course">
+  <div class="modal">
+    <h2 class="modal-title">Create Course</h2>
+    <div class="fg">
+      <div class="fl"><label>Program</label><select id="c-prog"><option value="">No program / all-platform</option></select></div>
+      <div class="fl"><label>Course Title</label><input type="text" id="c-title" placeholder="e.g. Urban AI Policy — Summer 2026"/></div>
+      <div class="fl"><label>Course Code</label><input type="text" id="c-code" placeholder="e.g. PII-401"/></div>
+      <div class="fl"><label>Description</label><textarea id="c-desc" placeholder="Brief course overview…"></textarea></div>
+      <div class="fl"><label>Instructor</label><select id="c-instructor"><option value="">Select instructor…</option></select></div>
+      <div class="fg fg2">
+        <div class="fl"><label>Start Date</label><input type="date" id="c-start"/></div>
+        <div class="fl"><label>End Date</label><input type="date" id="c-end"/></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('m-course')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCourse()">Create Course</button>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Content -->
+<div class="mo" id="m-content">
+  <div class="modal">
+    <h2 class="modal-title">Upload Content</h2>
+    <div class="fg">
+      <div class="fl"><label>Course</label><select id="uc-course"><option value="">Select course…</option></select></div>
+      <div class="fl"><label>Content Title</label><input type="text" id="uc-title" placeholder="e.g. Week 3 — Lecture Slides"/></div>
+      <div class="fl"><label>Type</label>
+        <select id="uc-type" onchange="toggleLinkField()">
+          <option value="document">Document / Slides</option>
+          <option value="video">Video</option>
+          <option value="audio">Audio</option>
+          <option value="link">External Link / Embed</option>
+        </select>
+      </div>
+      <div class="fl" id="uc-link-wrap" style="display:none"><label>URL</label><input type="url" id="uc-link" placeholder="https://…"/></div>
+      <div class="fl" id="uc-file-wrap">
+        <label>File</label>
+        <div class="uz" id="ucZone" onclick="document.getElementById('ucFile').click()">
+          <div class="uz-icon">📎</div>
+          <p class="uz-lbl"><strong>Click to browse</strong> or drag & drop</p>
+          <p class="uz-sub">PDF, PPTX, DOCX, MP4, MP3 — up to 500 MB</p>
+        </div>
+        <input type="file" id="ucFile" style="display:none" accept=".pdf,.pptx,.mp4,.mp3,.mov,.docx,.xlsx"/>
+        <p class="fc" id="ucFileName"></p>
+      </div>
+      <div class="fl"><label>Notes (optional)</label><textarea id="uc-notes" placeholder="Notes for students…"></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('m-content')">Cancel</button>
+      <button class="btn btn-primary" id="uc-btn" onclick="saveContent()">Upload</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Assignment -->
+<div class="mo" id="m-assignment">
+  <div class="modal">
+    <h2 class="modal-title">Create Assignment</h2>
+    <div class="fg">
+      <div class="fl"><label>Course</label><select id="a-course"><option value="">Select course…</option></select></div>
+      <div class="fl"><label>Assignment Title</label><input type="text" id="a-title" placeholder="e.g. Policy Memo — AI in Transit"/></div>
+      <div class="fl"><label>Instructions</label><textarea id="a-desc" placeholder="Detailed instructions for students…" style="min-height:110px"></textarea></div>
+      <div class="fl">
+        <label>Assignment Document (optional — PDF, DOCX, XLSX, PPTX)</label>
+        <div class="uz" id="aDocZone" onclick="document.getElementById('aDocFile').click()">
+          <div class="uz-icon">📄</div>
+          <p class="uz-lbl"><strong>Click to attach document</strong></p>
+          <p class="uz-sub">PDF, DOCX, XLSX, PPTX — up to 50 MB</p>
+        </div>
+        <input type="file" id="aDocFile" style="display:none" accept=".pdf,.docx,.xlsx,.pptx,.txt"/>
+        <p class="fc" id="aDocFileName"></p>
+      </div>
+      <div class="fg fg2">
+        <div class="fl"><label>Opens At (Date & Time)</label><input type="datetime-local" id="a-open"/></div>
+        <div class="fl"><label>Closes At (Date & Time)</label><input type="datetime-local" id="a-close"/></div>
+      </div>
+      <div class="fg fg2">
+        <div class="fl"><label>Max Points</label><input type="number" id="a-points" value="100" min="1"/></div>
+        <div class="fl"><label>Submission Type</label>
+          <select id="a-subtype">
+            <option value="both">File + Text</option>
+            <option value="file">File Upload Only</option>
+            <option value="text">Text Entry Only</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('m-assignment')">Cancel</button>
+      <button class="btn btn-primary" id="a-btn" onclick="saveAssignment()">Publish Assignment</button>
+    </div>
+  </div>
+</div>
+
+<!-- Submit Assignment (Student) -->
+<div class="mo" id="m-submit">
+  <div class="modal">
+    <h2 class="modal-title" id="sub-title">Submit Assignment</h2>
+    <input type="hidden" id="sub-id"/>
+    <div id="sub-doc-wrap" style="display:none;margin-bottom:16px">
+      <p style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:rgba(14,14,12,.45);margin-bottom:6px">Assignment Document</p>
+      <a id="sub-doc-link" href="#" target="_blank" class="btn btn-outline btn-sm">📄 Download Assignment</a>
+    </div>
+    <div class="fg">
+      <div class="fl" id="sub-text-wrap"><label>Your Response</label><textarea id="sub-text" placeholder="Write your response here…" style="min-height:150px"></textarea></div>
+      <div class="fl" id="sub-file-wrap">
+        <label>File Submission</label>
+        <div class="uz" onclick="document.getElementById('subFile').click()">
+          <div class="uz-icon">📄</div>
+          <p class="uz-lbl"><strong>Click to choose file</strong></p>
+          <p class="uz-sub">PDF, DOCX, PPTX, ZIP — up to 100 MB</p>
+        </div>
+        <input type="file" id="subFile" style="display:none" accept=".pdf,.docx,.pptx,.zip,.txt"/>
+        <p class="fc" id="subFileName"></p>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('m-submit')">Cancel</button>
+      <button class="btn btn-primary" id="sub-btn" onclick="submitAssignment()">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Grade Submission -->
+<div class="mo" id="m-grade">
+  <div class="modal">
+    <h2 class="modal-title">Grade Submission</h2>
+    <input type="hidden" id="gr-id"/>
+    <div class="fg">
+      <div class="fl">
+        <label>Student Response</label>
+        <div id="gr-preview" style="background:var(--warm);border:1px solid var(--rule);border-radius:2px;padding:14px;font-size:13px;min-height:70px;line-height:1.6;font-family:var(--mono);white-space:pre-wrap;word-break:break-word"></div>
+      </div>
+      <div class="fl"><label>Score (out of <span id="gr-max">100</span>)</label><input type="number" class="gi" id="gr-score" min="0" style="max-width:110px"/></div>
+      <div class="fl"><label>Feedback to Student</label><textarea id="gr-feedback" placeholder="Your comments…" style="min-height:100px"></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('m-grade')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGrade()">Save Grade</button>
+    </div>
+  </div>
+</div>
+
+<!-- Enroll Student -->
+<div class="mo" id="m-enroll">
+  <div class="modal">
+    <h2 class="modal-title">Enroll Student in Course</h2>
+    <div class="fg">
+      <div class="fl"><label>Course</label><select id="en-course"><option value="">Select course…</option></select></div>
+      <div class="fl"><label>Student</label><select id="en-student"><option value="">Select student…</option></select></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('m-enroll')">Cancel</button>
+      <button class="btn btn-primary" onclick="enrollStudent()">Enroll</button>
+    </div>
+  </div>
+</div>
+
+<!-- Assign Instructor to Course -->
+<div class="mo" id="m-assign-instr">
+  <div class="modal">
+    <h2 class="modal-title">Assign Instructor to Course</h2>
+    <div class="fg">
+      <div class="fl"><label>Course</label><select id="ai-course"><option value="">Select course…</option></select></div>
+      <div class="fl"><label>Instructor</label><select id="ai-instructor"><option value="">Select instructor…</option></select></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('m-assign-instr')">Cancel</button>
+      <button class="btn btn-primary" onclick="assignInstructor()">Assign</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SCRIPT ═══ -->
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SUPA_URL = 'https://adtgtzblbneqedkysurk.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkdGd0emJsYm5lcWVka3lzdXJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NjM2MTcsImV4cCI6MjA5ODEzOTYxN30.1OekgKjJONMYsv0-k_tIkwlHsTczfNPhcT4u4b9sLEw';
+const sb = createClient(SUPA_URL, SUPA_KEY);
+
+let USER = null, ROLE = null, ACTIVE_PROGRAM = null;
+
+// ── Boot ──────────────────────────────────────────────────────
+function showLoadError(msg) {
+  document.getElementById('loading').innerHTML =
+    `<p style="color:#e8795a;font-size:13px;max-width:320px;text-align:center;line-height:1.6">${msg}</p>
+     <a href="index.html" style="color:rgba(255,255,255,.5);font-size:12px;margin-top:12px">← Back to Sign In</a>`;
+}
+
+try {
+  const { data: sd, error: sessErr } = await sb.auth.getSession();
+  if (sessErr) throw sessErr;
+  if (!sd.session) { window.location.href = 'index.html'; throw new Error('no session'); }
+
+  const authUser = sd.session.user;
+  let { data: profile, error: profErr } = await sb.from('profiles').select('*').eq('id', authUser.id).single();
+
+  if (!profile) {
+    await sb.from('profiles').upsert({
+      id: authUser.id, email: authUser.email,
+      role: 'student', full_name: authUser.email.split('@')[0]
+    });
+    ({ data: profile } = await sb.from('profiles').select('*').eq('id', authUser.id).single());
+  }
+
+  if (!profile) throw new Error('Could not load your profile. Please contact your administrator.');
+
+  USER = profile; ROLE = profile.role;
+
+  document.getElementById('tName').textContent  = profile.full_name || profile.email;
+  document.getElementById('tEmail').textContent = profile.email;
+  const badge = document.getElementById('roleBadge');
+  badge.textContent = ROLE.charAt(0).toUpperCase() + ROLE.slice(1);
+  badge.className = 'rb ' + ROLE;
+
+  // Load program context — gracefully skip if schema patch not yet run
+  if (ROLE !== 'admin') {
+    try {
+      const { data: mems } = await sb.from('program_memberships')
+        .select('programs(id,name)').eq('user_id', USER.id);
+      const progs = (mems || []).map(m => m.programs).filter(Boolean);
+      if (progs.length >= 1) {
+        ACTIVE_PROGRAM = progs[0];
+        const btn = document.getElementById('progCtxBtn');
+        btn.textContent = progs.length === 1 ? '◈ ' + progs[0].name : '◈ Multiple Programs';
+        btn.style.display = 'block';
+      }
+    } catch(e) { /* program_memberships table may not exist yet — safe to ignore */ }
+  }
+
+  buildSidebar();
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').classList.add('ready');
+  navigate('overview');
+
+} catch(bootErr) {
+  if (bootErr.message !== 'no session') {
+    showLoadError('Failed to load: ' + bootErr.message);
+  }
+}
+
+// ── Utilities ─────────────────────────────────────────────────
+function setMain(html) { document.getElementById('mc').innerHTML = html; }
+
+function toast(msg, isErr) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.borderLeftColor = isErr ? '#9b2020' : 'var(--accent)';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function fmtDt(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+}
+
+// Fix #6: compare as strings (both are datetime-local format "YYYY-MM-DDTHH:MM") which sorts correctly lexicographically
+function isAfter(a, b) { return a > b; }
+
+function assignStatus(o, c) {
+  const now = new Date().toISOString();
+  if (now < o) return { label:'Scheduled', cls:'pending' };
+  if (now > c) return { label:'Closed', cls:'closed' };
+  return { label:'Open', cls:'open' };
+}
+
+function typeIcon(t) { return {video:'🎬',audio:'🎧',document:'📄',link:'🔗'}[t]||'📎'; }
+
+function mkStat(label, val, sub, ac) {
+  return `<div class="sc"><p class="sl">${label}</p><p class="sv${ac?' ac':''}">${val}</p>${sub?`<p class="ss">${sub}</p>`:''}</div>`;
+}
+
+async function fillSelect(id, rows, valKey, labelFn, placeholder) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = `<option value="">${placeholder}</option>` + (rows||[]).map(r => `<option value="${r[valKey]}">${labelFn(r)}</option>`).join('');
+}
+
+async function loadPrograms() {
+  const { data } = await sb.from('programs').select('id,name').order('name');
+  return data || [];
+}
+
+async function loadInstructors() {
+  const { data } = await sb.from('profiles').select('id,full_name,email').eq('role','instructor').order('full_name');
+  return data || [];
+}
+
+async function loadAllCourses() {
+  const { data } = await sb.from('courses').select('id,title,programs(name)').order('title');
+  return data || [];
+}
+
+async function loadMyCourses() {
+  if (ROLE === 'admin') return loadAllCourses();
+  if (ROLE === 'instructor') {
+    const { data } = await sb.from('courses').select('id,title').eq('instructor_id', USER.id).order('title');
+    return data || [];
+  }
+  // student — enrolled courses
+  const { data } = await sb.from('enrollments').select('courses(id,title)').eq('student_id', USER.id);
+  return (data||[]).map(e=>e.courses).filter(Boolean);
+}
+
+// ── Sidebar ───────────────────────────────────────────────────
+function buildSidebar() {
+  const nav = {
+    admin:[
+      {label:'Overview', items:[{id:'overview',icon:'🏠',label:'Dashboard'},{id:'analytics',icon:'📊',label:'Analytics'}]},
+      {label:'Programs', items:[{id:'programs',icon:'🏛️',label:'Programs'}]},
+      {label:'Platform', items:[{id:'users',icon:'👥',label:'Users & Roles'},{id:'courses',icon:'📚',label:'Courses'},{id:'enroll',icon:'🔗',label:'Enrollments'}]},
+      {label:'Content', items:[{id:'content',icon:'🎬',label:'Course Content'},{id:'assignments',icon:'📝',label:'Assignments'},{id:'submissions',icon:'📨',label:'Submissions'},{id:'grades',icon:'🎓',label:'All Grades'}]},
+    ],
+    instructor:[
+      {label:'Overview', items:[{id:'overview',icon:'🏠',label:'Dashboard'}]},
+      {label:'Teaching', items:[{id:'courses',icon:'📚',label:'My Courses'},{id:'content',icon:'🎬',label:'Course Content'},{id:'assignments',icon:'📝',label:'Assignments'},{id:'submissions',icon:'📨',label:'Submissions'},{id:'grades',icon:'🎓',label:'Gradebook'}]},
+    ],
+    student:[
+      {label:'Learning', items:[{id:'overview',icon:'🏠',label:'My Dashboard'},{id:'courses',icon:'📚',label:'My Courses'},{id:'content',icon:'🎬',label:'Materials'}]},
+      {label:'Work', items:[{id:'assignments',icon:'📝',label:'Assignments'},{id:'submissions',icon:'📨',label:'My Submissions'},{id:'grades',icon:'🎓',label:'My Grades'}]},
+    ],
+  };
+  const sects = nav[ROLE] || nav.student;
+  document.getElementById('sidebar').innerHTML = sects.map(s => `
+    <div class="sb-sect">
+      <p class="sb-lbl">${s.label}</p>
+      ${s.items.map(i=>`<button class="nav-btn" id="nav-${i.id}" onclick="navigate('${i.id}')"><span class="ni">${i.icon}</span>${i.label}</button>`).join('')}
+    </div>`).join('');
+}
+
+function navigate(sec) {
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const btn = document.getElementById('nav-'+sec);
+  if (btn) btn.classList.add('active');
+  ({overview:renderOverview,programs:renderPrograms,courses:renderCourses,content:renderContent,
+    assignments:renderAssignments,submissions:renderSubmissions,grades:renderGrades,
+    users:renderUsers,analytics:renderAnalytics,enroll:renderEnroll}[sec]||renderOverview)();
+}
+
+async function signOut() { await sb.auth.signOut(); window.location.href='index.html'; }
+
+// ═════════════════════════════════════════════
+//  PAGES
+// ═════════════════════════════════════════════
+
+async function renderOverview() {
+  setMain(`<div class="ph"><div><h1>Dashboard</h1><p>Welcome back, ${USER.full_name||USER.email}.</p></div></div><div class="sg" id="sg"></div>`);
+  const now = new Date().toISOString();
+  if (ROLE==='admin') {
+    const [{ count:u },{ count:p },{ count:c },{ count:s }] = await Promise.all([
+      sb.from('profiles').select('*',{count:'exact',head:true}),
+      sb.from('programs').select('*',{count:'exact',head:true}),
+      sb.from('courses').select('*',{count:'exact',head:true}),
+      sb.from('submissions').select('*',{count:'exact',head:true}),
+    ]);
+    document.getElementById('sg').innerHTML = mkStat('Programs',p??0,'',true)+mkStat('Users',u??0,'')+mkStat('Courses',c??0,'')+mkStat('Submissions',s??0,'');
+  } else if (ROLE==='instructor') {
+    const [{ count:c },{ count:a },{ count:u }] = await Promise.all([
+      sb.from('courses').select('*',{count:'exact',head:true}).eq('instructor_id',USER.id),
+      sb.from('assignments').select('*',{count:'exact',head:true}).eq('instructor_id',USER.id),
+      sb.from('submissions').select('*',{count:'exact',head:true}).is('grade',null),
+    ]);
+    document.getElementById('sg').innerHTML = mkStat('My Courses',c??0,'',true)+mkStat('Assignments',a??0,'')+mkStat('Ungraded',u??0,'Need review');
+  } else {
+    const [{ count:a },{ count:s }] = await Promise.all([
+      sb.from('assignments').select('*',{count:'exact',head:true}).lte('opens_at',now).gte('closes_at',now),
+      sb.from('submissions').select('*',{count:'exact',head:true}).eq('student_id',USER.id),
+    ]);
+    document.getElementById('sg').innerHTML = mkStat('Open Assignments',a??0,'Available now',true)+mkStat('My Submissions',s??0,'Total submitted');
+  }
+}
+
+async function renderPrograms() {
+  const { data } = await sb.from('programs').select('*, profiles(full_name)').order('created_at',{ascending:false});
+  const progs = data || [];
+  setMain(`
+    <div class="ph">
+      <div><h1>Programs</h1><p>${progs.length} program${progs.length!==1?'s':''}</p></div>
+      <div class="ph-act"><button class="btn btn-primary" onclick="openModal('m-program')">+ New Program</button></div>
+    </div>
+    <div class="info-box">Programs are the top-level containers (e.g. <em>PII × Cyvl Summer Innovation Program 2026</em>). Each program has its own courses, instructors, and students. Users can belong to multiple programs.</div>
+    ${progs.length===0?`<div class="empty"><div class="ei">🏛️</div><p class="et">No programs yet. Create your first one above.</p></div>`:
+      progs.map(p=>`
+        <div class="cc">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+            <div>
+              <p class="cc-title">🏛️ ${p.name}</p>
+              <p class="cc-meta">Created ${fmtDt(p.created_at)}</p>
+              ${p.description?`<p class="cc-desc">${p.description}</p>`:''}
+            </div>
+            <div style="display:flex;gap:7px;flex-shrink:0">
+              <button class="btn btn-outline btn-sm" onclick="filterByProgram('${p.id}','${p.name.replace(/'/g,"\\'")}')">View Courses</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteProgram('${p.id}')">Delete</button>
+            </div>
+          </div>
+        </div>`).join('')}`);
+}
+
+function filterByProgram(id, name) {
+  ACTIVE_PROGRAM = { id, name };
+  const btn = document.getElementById('progCtxBtn');
+  btn.textContent = '◈ ' + name;
+  btn.style.display = 'block';
+  navigate('courses');
+}
+
+async function renderCourses() {
+  let courses = [];
+  if (ROLE==='student') {
+    const { data } = await sb.from('enrollments').select('courses(*,profiles(full_name),programs(name))').eq('student_id',USER.id);
+    courses = (data||[]).map(e=>e.courses).filter(Boolean);
+  } else if (ROLE==='instructor') {
+    const { data } = await sb.from('courses').select('*,profiles(full_name),programs(name)').eq('instructor_id',USER.id).order('created_at',{ascending:false});
+    courses = data||[];
+  } else {
+    let q = sb.from('courses').select('*,profiles(full_name),programs(name)').order('created_at',{ascending:false});
+    if (ACTIVE_PROGRAM) q = q.eq('program_id', ACTIVE_PROGRAM.id);
+    const { data } = await q; courses = data||[];
+  }
+
+  const progFilter = ACTIVE_PROGRAM ? `<span style="font-size:12px;color:var(--accent);font-weight:600">◈ Filtered: ${ACTIVE_PROGRAM.name}</span> <button class="btn btn-outline btn-sm" onclick="clearProgramFilter()">Clear</button>` : '';
+
+  setMain(`
+    <div class="ph">
+      <div><h1>${ROLE==='student'?'My Courses':'Courses'}</h1><p>${courses.length} course${courses.length!==1?'s':''} ${progFilter}</p></div>
+      <div class="ph-act">
+        ${ROLE!=='student'?`<button class="btn btn-outline" onclick="openAssignInstrModal()">Assign Instructor</button><button class="btn btn-primary" onclick="openCourseModal()">+ New Course</button>`:''}
+      </div>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>Title</th><th>Program</th><th>Code</th><th>Instructor</th><th>Dates</th><th>Action</th></tr></thead>
+      <tbody>${courses.length===0?`<tr><td colspan="6"><div class="empty"><div class="ei">📚</div><p class="et">No courses yet.</p></div></td></tr>`:
+        courses.map(c=>`<tr class="dr">
+          <td><strong>${c.title}</strong><br><span style="font-size:11px;color:rgba(14,14,12,.38)">${(c.description||'').slice(0,50)}${(c.description||'').length>50?'…':''}</span></td>
+          <td style="font-size:12px">${c.programs?.name||'<span style="color:rgba(14,14,12,.3)">—</span>'}</td>
+          <td style="font-family:var(--mono);font-size:12px">${c.code||'—'}</td>
+          <td style="font-size:12px">${c.profiles?.full_name||'<span style="color:rgba(14,14,12,.3)">Unassigned</span>'}</td>
+          <td style="font-size:12px">${c.start_date?new Date(c.start_date).toLocaleDateString():'—'} → ${c.end_date?new Date(c.end_date).toLocaleDateString():'—'}</td>
+          <td><button class="btn btn-outline btn-sm" onclick="navigate('content')">Content</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`);
+}
+
+function clearProgramFilter() {
+  ACTIVE_PROGRAM = null;
+  document.getElementById('progCtxBtn').style.display = 'none';
+  navigate('courses');
+}
+
+async function renderContent() {
+  let q = sb.from('course_content').select('*,courses(title,programs(name))').order('created_at',{ascending:false});
+  if (ROLE==='instructor') {
+    const { data:mc } = await sb.from('courses').select('id').eq('instructor_id',USER.id);
+    const ids=(mc||[]).map(c=>c.id);
+    if(!ids.length){setMain('<div class="empty"><div class="ei">🎬</div><p class="et">No courses assigned yet.</p></div>');return;}
+    q=q.in('course_id',ids);
+  } else if (ROLE==='student') {
+    const { data:enr } = await sb.from('enrollments').select('course_id').eq('student_id',USER.id);
+    const ids=(enr||[]).map(e=>e.course_id);
+    if(!ids.length){setMain('<div class="empty"><div class="ei">🎬</div><p class="et">You are not enrolled in any courses yet.</p></div>');return;}
+    q=q.in('course_id',ids);
+  }
+  const { data } = await q; const items=data||[];
+  const can = ROLE!=='student';
+  setMain(`
+    <div class="ph">
+      <div><h1>Course Content</h1><p>${items.length} item${items.length!==1?'s':''}</p></div>
+      <div class="ph-act">${can?`<button class="btn btn-primary" onclick="openContentModal()">+ Upload Content</button>`:''}</div>
+    </div>
+    ${items.length===0?`<div class="empty"><div class="ei">🎬</div><p class="et">No content yet.</p></div>`:
+      items.map(item=>`<div class="cc">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div>
+            <p class="cc-title">${typeIcon(item.content_type)} ${item.title}</p>
+            <p class="cc-meta">${item.courses?.title||'—'}${item.courses?.programs?.name?' · '+item.courses.programs.name:''} · ${fmtDt(item.created_at)}</p>
+            ${item.notes?`<p class="cc-desc">${item.notes}</p>`:''}
+          </div>
+          <div style="display:flex;gap:7px;flex-shrink:0">
+            ${item.file_url?`<a href="${item.file_url}" target="_blank" class="btn btn-outline btn-sm">Open</a>`:''}
+            ${item.external_url?`<a href="${item.external_url}" target="_blank" class="btn btn-outline btn-sm">Link</a>`:''}
+            ${can?`<button class="btn btn-danger btn-sm" onclick="deleteContent('${item.id}')">Remove</button>`:''}
+          </div>
+        </div>
+      </div>`).join('')}`);
+
+  document.getElementById('ucFile')?.addEventListener('change',function(){document.getElementById('ucFileName').textContent=this.files[0]?this.files[0].name:'';});
+  setupDragDrop('ucZone','ucFile','ucFileName');
+}
+
+async function renderAssignments() {
+  let q = sb.from('assignments').select('*,courses(title,programs(name))').order('closes_at',{ascending:true});
+  if(ROLE==='instructor') q=q.eq('instructor_id',USER.id);
+  else if(ROLE==='student'){
+    const { data:enr } = await sb.from('enrollments').select('course_id').eq('student_id',USER.id);
+    const ids=(enr||[]).map(e=>e.course_id);
+    if(!ids.length){setMain('<div class="empty"><div class="ei">📝</div><p class="et">You are not enrolled in any courses yet.</p></div>');return;}
+    q=q.in('course_id',ids);
+  }
+  const { data } = await q; const rows=data||[];
+  let mySubMap={};
+  if(ROLE==='student'){
+    const { data:subs } = await sb.from('submissions').select('assignment_id').eq('student_id',USER.id);
+    (subs||[]).forEach(s=>mySubMap[s.assignment_id]=true);
+  }
+  const can=ROLE!=='student';
+  setMain(`
+    <div class="ph">
+      <div><h1>Assignments</h1><p>${rows.length} assignment${rows.length!==1?'s':''}</p></div>
+      <div class="ph-act">${can?`<button class="btn btn-primary" onclick="openAssignmentModal()">+ New Assignment</button>`:''}</div>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>Title</th><th>Course</th><th>Opens</th><th>Closes</th><th>Pts</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>${rows.length===0?`<tr><td colspan="7"><div class="empty"><div class="ei">📝</div><p class="et">No assignments yet.</p></div></td></tr>`:
+        rows.map(a=>{
+          const st=assignStatus(a.opens_at,a.closes_at);
+          const submitted=ROLE==='student'&&mySubMap[a.id];
+          return`<tr class="dr">
+            <td><strong>${a.title}</strong>${a.assignment_file_url?` <a href="${a.assignment_file_url}" target="_blank" style="font-size:10px;color:var(--accent);margin-left:4px">📄 doc</a>`:''}</td>
+            <td style="font-size:12px">${a.courses?.title||'—'}</td>
+            <td style="font-size:11px;font-family:var(--mono)">${fmtDt(a.opens_at)}</td>
+            <td style="font-size:11px;font-family:var(--mono)">${fmtDt(a.closes_at)}</td>
+            <td>${a.max_points||100}</td>
+            <td><span class="pill ${st.cls}">${st.label}</span></td>
+            <td style="display:flex;gap:6px">
+              ${ROLE==='student'&&st.cls==='open'&&!submitted?`<button class="btn btn-primary btn-sm" onclick="openSubmitModal('${a.id}','${a.title.replace(/'/g,"\\'")}','${a.submission_type||'both'}','${a.assignment_file_url||''}')">Submit</button>`:''}
+              ${submitted?`<span class="pill submitted">Submitted</span>`:''}
+              ${can?`<button class="btn btn-outline btn-sm" onclick="navigate('submissions')">Subs</button>`:''}
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table></div>`);
+}
+
+async function renderSubmissions() {
+  let q=sb.from('submissions').select('*,assignments(title,max_points,courses(title)),profiles(full_name,email)').order('submitted_at',{ascending:false});
+  if(ROLE==='student') q=q.eq('student_id',USER.id);
+  else if(ROLE==='instructor'){
+    const { data:mc } = await sb.from('courses').select('id').eq('instructor_id',USER.id);
+    const { data:ma } = await sb.from('assignments').select('id').in('course_id',(mc||[]).map(c=>c.id));
+    if(ma?.length) q=q.in('assignment_id',ma.map(a=>a.id));
+  }
+  const { data } = await q; const subs=data||[];
+  setMain(`
+    <div class="ph"><div><h1>${ROLE==='student'?'My Submissions':'Submissions & Grading'}</h1><p>${subs.length} submission${subs.length!==1?'s':''}</p></div></div>
+    <div class="tw"><table>
+      <thead><tr>${ROLE!=='student'?'<th>Student</th>':''}<th>Assignment</th><th>Course</th><th>Submitted</th><th>Grade</th><th>Actions</th></tr></thead>
+      <tbody>${subs.length===0?`<tr><td colspan="6"><div class="empty"><div class="ei">📨</div><p class="et">No submissions yet.</p></div></td></tr>`:
+        subs.map(s=>`<tr class="dr">
+          ${ROLE!=='student'?`<td><strong>${s.profiles?.full_name||'—'}</strong><br><span style="font-size:11px;color:rgba(14,14,12,.38)">${s.profiles?.email||''}</span></td>`:''}
+          <td>${s.assignments?.title||'—'}</td>
+          <td>${s.assignments?.courses?.title||'—'}</td>
+          <td style="font-size:11px;font-family:var(--mono)">${fmtDt(s.submitted_at)}</td>
+          <td>${s.grade!=null?`<strong style="color:var(--accent)">${s.grade}/${s.assignments?.max_points||100}</strong>`:`<span class="pill pending">Pending</span>`}</td>
+          <td style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            ${ROLE!=='student'?`<button class="btn btn-outline btn-sm" onclick="openGradeModal('${s.id}','${(s.text_response||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,' ')}',${s.assignments?.max_points||100})">Grade</button>`:''}
+            ${s.file_url?`<a href="${s.file_url}" target="_blank" class="btn btn-outline btn-sm">Download</a>`:''}
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`);
+}
+
+async function renderGrades() {
+  let q=sb.from('submissions').select('*,assignments(title,max_points,courses(title)),profiles(full_name)').not('grade','is',null).order('graded_at',{ascending:false});
+  if(ROLE==='student') q=q.eq('student_id',USER.id);
+  const { data } = await q; const graded=data||[];
+  const avg=graded.length?(graded.reduce((s,g)=>(g.grade/(g.assignments?.max_points||100))*100+s,0)/graded.length).toFixed(1):'—';
+  setMain(`
+    <div class="ph"><div><h1>${ROLE==='student'?'My Grades':'Gradebook'}</h1><p>${graded.length} graded</p></div></div>
+    ${graded.length?`<div class="sg">${mkStat('Graded',graded.length,'',true)}${mkStat('Average',avg+'%','')}</div>`:''}
+    <div class="tw"><table>
+      <thead><tr>${ROLE!=='student'?'<th>Student</th>':''}<th>Assignment</th><th>Course</th><th>Score</th><th>Feedback</th></tr></thead>
+      <tbody>${graded.length===0?`<tr><td colspan="5"><div class="empty"><div class="ei">🎓</div><p class="et">No graded submissions yet.</p></div></td></tr>`:
+        graded.map(g=>`<tr class="dr">
+          ${ROLE!=='student'?`<td><strong>${g.profiles?.full_name||'—'}</strong></td>`:''}
+          <td>${g.assignments?.title||'—'}</td>
+          <td>${g.assignments?.courses?.title||'—'}</td>
+          <td><span style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent)">${g.grade}</span><span style="color:rgba(14,14,12,.38)">/${g.assignments?.max_points||100}</span></td>
+          <td style="font-size:12px;color:rgba(14,14,12,.55);max-width:240px">${g.feedback||'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`);
+}
+
+async function renderUsers() {
+  const { data } = await sb.from('profiles').select('*').order('role').order('full_name');
+  const users=data||[];
+  setMain(`
+    <div class="ph">
+      <div><h1>Users & Roles</h1><p>${users.length} user${users.length!==1?'s':''}</p></div>
+      <div class="ph-act"><button class="btn btn-primary" onclick="openAddUserModal()">+ Add User</button></div>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th><th>Change Role</th></tr></thead>
+      <tbody>${users.length===0?`<tr><td colspan="5"><div class="empty"><div class="ei">👥</div><p class="et">No users yet.</p></div></td></tr>`:
+        users.map(u=>`<tr class="dr">
+          <td><strong>${u.full_name||'—'}</strong></td>
+          <td style="font-family:var(--mono);font-size:12px">${u.email}</td>
+          <td><span class="pill ${u.role}">${u.role}</span></td>
+          <td style="font-size:12px">${u.created_at?new Date(u.created_at).toLocaleDateString():'—'}</td>
+          <td><select class="gi" style="width:130px;text-align:left" onchange="changeRole('${u.id}',this.value)">
+            ${['student','instructor','admin'].map(r=>`<option value="${r}"${u.role===r?' selected':''}>${r}</option>`).join('')}
+          </select></td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`);
+}
+
+async function renderEnroll() {
+  const { data:rows } = await sb.from('enrollments').select('*,courses(title,programs(name)),profiles(full_name,email)').order('enrolled_at',{ascending:false});
+  const enr=rows||[];
+  setMain(`
+    <div class="ph">
+      <div><h1>Enrollments</h1><p>${enr.length} enrollment${enr.length!==1?'s':''}</p></div>
+      <div class="ph-act"><button class="btn btn-primary" onclick="openEnrollModal()">+ Enroll Student</button></div>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>Student</th><th>Course</th><th>Program</th><th>Enrolled</th><th>Action</th></tr></thead>
+      <tbody>${enr.length===0?`<tr><td colspan="5"><div class="empty"><div class="ei">🔗</div><p class="et">No enrollments yet.</p></div></td></tr>`:
+        enr.map(e=>`<tr class="dr">
+          <td><strong>${e.profiles?.full_name||'—'}</strong><br><span style="font-size:11px;color:rgba(14,14,12,.38)">${e.profiles?.email||''}</span></td>
+          <td>${e.courses?.title||'—'}</td>
+          <td style="font-size:12px">${e.courses?.programs?.name||'—'}</td>
+          <td style="font-size:12px">${e.enrolled_at?new Date(e.enrolled_at).toLocaleDateString():'—'}</td>
+          <td><button class="btn btn-danger btn-sm" onclick="removeEnrollment('${e.id}')">Remove</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`);
+}
+
+async function renderAnalytics() {
+  const [{ count:u },{ count:p },{ count:c },{ count:s },{ count:g }] = await Promise.all([
+    sb.from('profiles').select('*',{count:'exact',head:true}),
+    sb.from('programs').select('*',{count:'exact',head:true}),
+    sb.from('courses').select('*',{count:'exact',head:true}),
+    sb.from('submissions').select('*',{count:'exact',head:true}),
+    sb.from('submissions').select('*',{count:'exact',head:true}).not('grade','is',null),
+  ]);
+  setMain(`
+    <div class="ph"><div><h1>Analytics</h1><p>Platform overview</p></div></div>
+    <div class="sg">${mkStat('Programs',p??0,'',true)}${mkStat('Users',u??0,'')}${mkStat('Courses',c??0,'')}${mkStat('Submissions',s??0,'')}${mkStat('Graded',g??0,s?Math.round((g/s)*100)+'%':'')}</div>
+    <div class="cc"><p class="cc-title">📈 Extended analytics</p><p class="cc-desc">Connect Supabase to a BI tool like Metabase, or build custom reports using Supabase Edge Functions for grade distributions, per-program engagement, and completion rates.</p></div>`);
+}
+
+// ═════════════════════════════════════════════
+//  MODAL OPENERS
+// ═════════════════════════════════════════════
+
+async function openAddUserModal() {
+  const progs = await loadPrograms();
+  const sel = document.getElementById('au-prog');
+  sel.innerHTML = progs.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  openModal('m-adduser');
+}
+
+async function openCourseModal() {
+  const [progs, instructors] = await Promise.all([loadPrograms(), loadInstructors()]);
+  await fillSelect('c-prog', progs, 'id', r=>r.name, 'No program / platform-wide');
+  await fillSelect('c-instructor', instructors, 'id', r=>r.full_name||r.email, 'Select instructor…');
+  openModal('m-course');
+}
+
+async function openContentModal() {
+  const courses = await loadMyCourses();
+  await fillSelect('uc-course', courses, 'id', r=>r.title, 'Select course…');
+  openModal('m-content');
+  document.getElementById('ucFile').addEventListener('change',function(){document.getElementById('ucFileName').textContent=this.files[0]?this.files[0].name:'';},{once:true});
+  setupDragDrop('ucZone','ucFile','ucFileName');
+}
+
+async function openAssignmentModal() {
+  const courses = await loadMyCourses();
+  await fillSelect('a-course', courses, 'id', r=>r.title, 'Select course…');
+  document.getElementById('aDocFile').addEventListener('change',function(){document.getElementById('aDocFileName').textContent=this.files[0]?this.files[0].name:'';},{once:true});
+  setupDragDrop('aDocZone','aDocFile','aDocFileName');
+  openModal('m-assignment');
+}
+
+function openSubmitModal(id, title, subtype, docUrl) {
+  document.getElementById('sub-id').value=id;
+  document.getElementById('sub-title').textContent='Submit: '+title;
+  document.getElementById('sub-text-wrap').style.display=subtype==='file'?'none':'block';
+  document.getElementById('sub-file-wrap').style.display=subtype==='text'?'none':'block';
+  const docWrap=document.getElementById('sub-doc-wrap');
+  if(docUrl){
+    docWrap.style.display='block';
+    document.getElementById('sub-doc-link').href=docUrl;
+  } else { docWrap.style.display='none'; }
+  document.getElementById('subFile').addEventListener('change',function(){document.getElementById('subFileName').textContent=this.files[0]?this.files[0].name:'';},{once:true});
+  openModal('m-submit');
+}
+
+function openGradeModal(subId, preview, maxPts) {
+  document.getElementById('gr-id').value=subId;
+  document.getElementById('gr-preview').textContent=preview||'(File submission — use Download button to review)';
+  document.getElementById('gr-max').textContent=maxPts;
+  document.getElementById('gr-score').max=maxPts;
+  document.getElementById('gr-score').value='';
+  document.getElementById('gr-feedback').value='';
+  openModal('m-grade');
+}
+
+async function openEnrollModal() {
+  const [courses,students] = await Promise.all([loadAllCourses(), sb.from('profiles').select('id,full_name,email').eq('role','student').order('full_name')]);
+  await fillSelect('en-course', courses, 'id', r=>r.title+(r.programs?.name?' ('+r.programs.name+')':''), 'Select course…');
+  await fillSelect('en-student', students.data||[], 'id', r=>r.full_name||r.email, 'Select student…');
+  openModal('m-enroll');
+}
+
+async function openAssignInstrModal() {
+  const [courses, instructors] = await Promise.all([loadAllCourses(), loadInstructors()]);
+  await fillSelect('ai-course', courses, 'id', r=>r.title+(r.programs?.name?' ('+r.programs.name+')':''), 'Select course…');
+  await fillSelect('ai-instructor', instructors, 'id', r=>r.full_name||r.email, 'Select instructor…');
+  openModal('m-assign-instr');
+}
+
+// ═════════════════════════════════════════════
+//  SAVE ACTIONS
+// ═════════════════════════════════════════════
+
+async function addUser() {
+  const name=document.getElementById('au-name').value.trim();
+  const email=document.getElementById('au-email').value.trim();
+  const role=document.getElementById('au-role').value;
+  const pass=document.getElementById('au-pass').value;
+  const progIds=[...document.getElementById('au-prog').selectedOptions].map(o=>o.value).filter(Boolean);
+  const errEl=document.getElementById('au-err');
+  const btn=document.getElementById('au-btn');
+  errEl.style.display='none';
+  if(!name||!email||!pass){errEl.textContent='All fields are required.';errEl.style.display='block';return;}
+  if(pass.length<8){errEl.textContent='Password must be at least 8 characters.';errEl.style.display='block';return;}
+  btn.disabled=true; btn.innerHTML='<div class="ssm"></div> Creating…';
+  try {
+    const { data:sessData } = await sb.auth.getSession();
+    const token=sessData.session?.access_token;
+    if(!token) throw new Error('Session expired. Please sign in again.');
+    const res=await fetch(`${SUPA_URL}/functions/v1/create-user`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+      body:JSON.stringify({email,password:pass,full_name:name,role,program_ids:progIds})
+    });
+    const json=await res.json();
+    if(!res.ok) throw new Error(json.error||'Failed to create user.');
+    closeModal('m-adduser');
+    toast(`${name} added as ${role}.`);
+    ['au-name','au-email','au-pass'].forEach(id=>document.getElementById(id).value='');
+    navigate('users');
+  } catch(err){ errEl.textContent=err.message; errEl.style.display='block'; }
+  btn.disabled=false; btn.innerHTML='Create User';
+}
+
+async function saveProgram() {
+  const name=document.getElementById('p-name').value.trim();
+  if(!name){toast('Please enter a program name.',true);return;}
+  const { error }=await sb.from('programs').insert({name,description:document.getElementById('p-desc').value.trim(),created_by:USER.id});
+  if(error){toast(error.message,true);return;}
+  closeModal('m-program');
+  document.getElementById('p-name').value=''; document.getElementById('p-desc').value='';
+  toast('Program created!');navigate('programs');
+}
+
+async function saveCourse() {
+  const title=document.getElementById('c-title').value.trim();
+  const instrId=document.getElementById('c-instructor').value||null;
+  const progId=document.getElementById('c-prog').value||null;
+  if(!title){toast('Please enter a course title.',true);return;}
+  // Fix #4: admin inserts must still satisfy RLS — use USER.id as fallback instructor
+  const insertData={
+    title,
+    code:document.getElementById('c-code').value.trim()||null,
+    description:document.getElementById('c-desc').value.trim()||null,
+    start_date:document.getElementById('c-start').value||null,
+    end_date:document.getElementById('c-end').value||null,
+    instructor_id: instrId || USER.id,
+    program_id: progId
+  };
+  const { error }=await sb.from('courses').insert(insertData);
+  if(error){toast('Error: '+error.message,true);return;}
+  closeModal('m-course');toast('Course created!');navigate('courses');
+}
+
+async function saveContent() {
+  const courseId=document.getElementById('uc-course').value;
+  const title=document.getElementById('uc-title').value.trim();
+  const type=document.getElementById('uc-type').value;
+  const link=document.getElementById('uc-link').value.trim();
+  const notes=document.getElementById('uc-notes').value.trim();
+  const file=document.getElementById('ucFile').files[0];
+  const btn=document.getElementById('uc-btn');
+  if(!courseId||!title){toast('Please fill in required fields.',true);return;}
+  btn.disabled=true; btn.innerHTML='<div class="ssm"></div> Uploading…';
+  let fileUrl=null;
+  if(file){
+    const path=`content/${courseId}/${Date.now()}-${file.name}`;
+    const { error:upErr }=await sb.storage.from('course-files').upload(path,file);
+    if(upErr){toast('Upload error: '+upErr.message,true);btn.disabled=false;btn.innerHTML='Upload';return;}
+    const { data:ud }=sb.storage.from('course-files').getPublicUrl(path);
+    fileUrl=ud.publicUrl;
+  }
+  const { error }=await sb.from('course_content').insert({course_id:courseId,title,content_type:type,file_url:fileUrl,external_url:link||null,notes:notes||null,uploaded_by:USER.id});
+  if(error){toast('Error: '+error.message,true);btn.disabled=false;btn.innerHTML='Upload';return;}
+  closeModal('m-content');toast('Content uploaded!');btn.disabled=false;btn.innerHTML='Upload';navigate('content');
+}
+
+async function saveAssignment() {
+  const courseId=document.getElementById('a-course').value;
+  const title=document.getElementById('a-title').value.trim();
+  const opens=document.getElementById('a-open').value;
+  const closes=document.getElementById('a-close').value;
+  const btn=document.getElementById('a-btn');
+  if(!courseId||!title||!opens||!closes){toast('Please fill all required fields.',true);return;}
+  // Fix #6: compare strings directly — datetime-local values are ISO-like and sort correctly
+  if(closes<=opens){toast('Close date/time must be after open date/time.',true);return;}
+  btn.disabled=true; btn.innerHTML='<div class="ssm"></div> Saving…';
+  // Upload assignment doc if provided
+  let docUrl=null;
+  const docFile=document.getElementById('aDocFile').files[0];
+  if(docFile){
+    const path=`assignments/${courseId}/${Date.now()}-${docFile.name}`;
+    const { error:upErr }=await sb.storage.from('course-files').upload(path,docFile);
+    if(!upErr){
+      const { data:ud }=sb.storage.from('course-files').getPublicUrl(path);
+      docUrl=ud.publicUrl;
+    }
+  }
+  const { error }=await sb.from('assignments').insert({
+    course_id:courseId,title,
+    description:document.getElementById('a-desc').value.trim(),
+    opens_at:opens,closes_at:closes,
+    max_points:parseInt(document.getElementById('a-points').value)||100,
+    submission_type:document.getElementById('a-subtype').value,
+    instructor_id:USER.id,
+    assignment_file_url:docUrl
+  });
+  if(error){toast('Error: '+error.message,true);btn.disabled=false;btn.innerHTML='Publish Assignment';return;}
+  closeModal('m-assignment');toast('Assignment published!');btn.disabled=false;btn.innerHTML='Publish Assignment';navigate('assignments');
+}
+
+async function submitAssignment() {
+  const assignId=document.getElementById('sub-id').value;
+  const text=document.getElementById('sub-text').value.trim();
+  const file=document.getElementById('subFile').files[0];
+  const btn=document.getElementById('sub-btn');
+  const { data:ex }=await sb.from('submissions').select('id').eq('assignment_id',assignId).eq('student_id',USER.id).single();
+  if(ex){toast('You already submitted this assignment.',true);return;}
+  btn.disabled=true; btn.innerHTML='<div class="ssm"></div> Submitting…';
+  let fileUrl=null;
+  if(file){
+    const path=`submissions/${assignId}/${USER.id}-${Date.now()}-${file.name}`;
+    const { error:upErr }=await sb.storage.from('course-files').upload(path,file);
+    if(!upErr){const { data:ud }=sb.storage.from('course-files').getPublicUrl(path);fileUrl=ud.publicUrl;}
+  }
+  const { error }=await sb.from('submissions').insert({assignment_id:assignId,student_id:USER.id,text_response:text||null,file_url:fileUrl,submitted_at:new Date().toISOString()});
+  if(error){toast('Error: '+error.message,true);btn.disabled=false;btn.innerHTML='Submit';return;}
+  closeModal('m-submit');toast('Submitted! 🎉');btn.disabled=false;btn.innerHTML='Submit';navigate('submissions');
+}
+
+async function saveGrade() {
+  const subId=document.getElementById('gr-id').value;
+  const score=parseFloat(document.getElementById('gr-score').value);
+  const feedback=document.getElementById('gr-feedback').value.trim();
+  if(isNaN(score)){toast('Please enter a numeric score.',true);return;}
+  const { error }=await sb.from('submissions').update({grade:score,feedback,graded_at:new Date().toISOString(),graded_by:USER.id}).eq('id',subId);
+  if(error){toast('Error: '+error.message,true);return;}
+  closeModal('m-grade');toast('Grade saved!');navigate('submissions');
+}
+
+async function enrollStudent() {
+  const courseId=document.getElementById('en-course').value;
+  const studentId=document.getElementById('en-student').value;
+  if(!courseId||!studentId){toast('Please select both a course and a student.',true);return;}
+  const { error }=await sb.from('enrollments').insert({course_id:courseId,student_id:studentId});
+  if(error&&error.code==='23505'){toast('Student is already enrolled in this course.',true);return;}
+  if(error){toast('Error: '+error.message,true);return;}
+  closeModal('m-enroll');toast('Student enrolled!');navigate('enroll');
+}
+
+async function removeEnrollment(id) {
+  if(!confirm('Remove this enrollment?'))return;
+  await sb.from('enrollments').delete().eq('id',id);
+  toast('Enrollment removed.');navigate('enroll');
+}
+
+async function deleteContent(id) {
+  if(!confirm('Remove this content item?'))return;
+  await sb.from('course_content').delete().eq('id',id);
+  toast('Content removed.');navigate('content');
+}
+
+async function deleteProgram(id) {
+  if(!confirm('Delete this program? Courses will not be deleted but will be unlinked from the program.'))return;
+  await sb.from('programs').delete().eq('id',id);
+  toast('Program deleted.');navigate('programs');
+}
+
+async function changeRole(userId,newRole) {
+  await sb.from('profiles').update({role:newRole}).eq('id',userId);
+  toast('Role updated to '+newRole+'.');
+}
+
+async function assignInstructor() {
+  const courseId=document.getElementById('ai-course').value;
+  const instrId=document.getElementById('ai-instructor').value;
+  if(!courseId||!instrId){toast('Please select both a course and an instructor.',true);return;}
+  const { error }=await sb.from('courses').update({instructor_id:instrId}).eq('id',courseId);
+  if(error){toast('Error: '+error.message,true);return;}
+  closeModal('m-assign-instr');toast('Instructor assigned!');navigate('courses');
+}
+
+async function saveProgram() {
+  const name=document.getElementById('p-name').value.trim();
+  if(!name){toast('Please enter a program name.',true);return;}
+  const { error }=await sb.from('programs').insert({name,description:document.getElementById('p-desc').value.trim(),created_by:USER.id});
+  if(error){toast(error.message,true);return;}
+  closeModal('m-program');
+  document.getElementById('p-name').value=''; document.getElementById('p-desc').value='';
+  toast('Program created!');navigate('programs');
+}
+
+function toggleLinkField() {
+  const t=document.getElementById('uc-type').value;
+  document.getElementById('uc-link-wrap').style.display=t==='link'?'block':'none';
+  document.getElementById('uc-file-wrap').style.display=t==='link'?'none':'block';
+}
+
+function setupDragDrop(zoneId, inputId, labelId) {
+  const zone=document.getElementById(zoneId);
+  if(!zone)return;
+  zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag');});
+  zone.addEventListener('dragleave',()=>zone.classList.remove('drag'));
+  zone.addEventListener('drop',e=>{
+    e.preventDefault();zone.classList.remove('drag');
+    const f=e.dataTransfer.files[0];
+    if(f){document.getElementById(inputId).files=e.dataTransfer.files;document.getElementById(labelId).textContent=f.name;}
+  });
+}
+
+// Close modals on backdrop click
+document.querySelectorAll('.mo').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');}));
+
+// Expose to window for onclick attrs
+Object.assign(window,{navigate,signOut,openModal,closeModal,openAddUserModal,openCourseModal,
+  openContentModal,openAssignmentModal,openSubmitModal,openGradeModal,openEnrollModal,
+  openAssignInstrModal,saveProgram,saveCourse,saveContent,saveAssignment,submitAssignment,
+  saveGrade,enrollStudent,removeEnrollment,deleteContent,deleteProgram,changeRole,
+  assignInstructor,addUser,toggleLinkField,filterByProgram,clearProgramFilter});
+</script>
+</body>
+</html>
